@@ -5,6 +5,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Platform } from 'react-native';
 
 //SCHIMB ECRANUL CU ROUTER NU CU LINK LA CREATE ACCOUNT!
 
@@ -13,7 +14,7 @@ export default function SignIn() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
-
+    const os = Platform.OS;
     const forgotPass = () => {
         //De refacut la baza de date:
         Alert.alert("Forgot password?", "You will receive an email with a password reset link.")
@@ -32,7 +33,7 @@ export default function SignIn() {
         <Text style={styles.title}>Sign In</Text>
       </View>
 
-      <View style={styles.inputContainer}>
+      <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='user' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
         <TextInput onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' />
       </View>
