@@ -1,12 +1,11 @@
 import { View, Text, StyleSheet, Image, TextInput, Pressable, Alert, ImageBackground, TouchableOpacity } from 'react-native';
 import React from 'react';
-import { Link, Stack } from 'expo-router';
-import { Entypo, FontAwesome } from '@expo/vector-icons';
+import { Stack } from 'expo-router';
+import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
-import { opacity } from 'react-native-reanimated/lib/typescript/Colors';
 
 //Social media sign up nu merge apasat (pressable sau ceva)
 
@@ -15,14 +14,13 @@ export default function SignIn() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
+    const resetFields = () => {
+      setEmail('');
+      setPassword('');
+    };
     const onSignUp = () => {
         console.log(`Account created: ${email} ${password} `);
-    };
-    const onFacebookLogin = () => {
-      console.log("Facebook login");
-    };
-    const onGoogleLogin = () => {
-      console.log("Google login");
+        resetFields();
     };
   return (
     
@@ -38,35 +36,24 @@ export default function SignIn() {
 
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
+        <TextInput value={email} onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
+      
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='lock' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput onChangeText={setPassword} style={styles.textInput} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
+        <TextInput value={password} onChangeText={setPassword} style={styles.textInput} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
         <Pressable onPress={()=>{hidden ? setHidden(false) : setHidden(true)}}>
             <FontAwesome name={hidden ? 'eye' : 'eye-slash'} size={24} color={'#9A9A9A'} style={styles.hiddenIcon} />
         </Pressable>
       </View>
-      <Text style={styles.footerText}>Already have an account? <Text style={{color: '#0399fc', textDecorationLine: 'underline'}} onPress={()=>{router.navigate('/sign-in')}}>Log in</Text> </Text>
+
       <View style={styles.signInButtonContainer}>
         <Text style={styles.signIn}>Create account</Text>
         <Pressable onPress={onSignUp} style={({ pressed }) => [styles.signInButton,{ opacity: pressed ? 0.5 : 1.0 }]}>
             <AntDesign name='arrowright' size={24} color={'white'} style={{alignSelf: 'center'}} />
-        </Pressable>        
-      </View>
-
-      <View>
-          <Text style={styles.socialMediaText}>Or sign up with social media</Text>
-      </View>
-
-      <View style={styles.socialMediaContainer}>
-        <Pressable style={({pressed}) => [{opacity: pressed ? 0.5 : 1.0}]} onPress={onFacebookLogin}>
-          <Entypo style={styles.socialIcon} size={45} name='facebook-with-circle' color={'blue'} />
-        </Pressable>
-        <Pressable style={({pressed}) => [{opacity: pressed ? 0.5 : 1.0}]} onPress={onGoogleLogin}>
-          <AntDesign style={styles.socialIcon} size={45} name='google' color={'red'} />
         </Pressable>
       </View>
+      <Text style={styles.footerText}>Already have an account? <Text style={{color: '#0399fc', textDecorationLine: 'underline'}} onPress={()=>{router.navigate('/sign-in')}}>Log in</Text> </Text>
 
       <View style={styles.leftImageContainer}>
         <ImageBackground source={require('../../../assets/images/bottomVector.png')} style={styles.leftImage} />
@@ -127,7 +114,7 @@ const styles = StyleSheet.create({
     },
     signInButtonContainer:{
         flexDirection: 'row',
-        marginTop: 100,
+        marginTop: 60,
         width: '97%',
         justifyContent: 'flex-end',
     },
@@ -146,7 +133,7 @@ const styles = StyleSheet.create({
         fontSize: 25,
     },
     footerText:{
-        marginTop: 20,
+        marginTop: 150,
         fontSize: 17,
         textAlign:'center',
         fontWeight: 400,
@@ -158,25 +145,6 @@ const styles = StyleSheet.create({
     },
     leftImage:{
         height: 300,
-        width: 300,
-    },
-    socialMediaText:{
-      textAlign: 'center',
-      fontSize: 20,
-      marginTop: 50,
-    },
-    socialMediaContainer:{
-      display: 'flex',
-      flexDirection: 'row',
-      marginTop: 20,
-      justifyContent: 'center',
-      gap: 10,
-    },
-    socialIcon:{
-      backgroundColor: 'white',
-      elevation: 20,
-      //borderWidth: 5,
-      padding: 10,
-      borderRadius: 50,
+        width: 250,
     }
 })

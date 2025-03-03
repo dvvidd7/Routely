@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TextInput, Pressable, Alert, ImageBackground } from 'react-native';
 import React from 'react';
-import { Link, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
 import { AntDesign } from '@expo/vector-icons';
@@ -21,7 +21,12 @@ export default function SignIn() {
     }
     const onSignIn = () => {
         console.log(`Sign in detected: ${email} ${password} `);
+        resetFields();
     }
+    const resetFields = () => {
+        setEmail('');
+        setPassword('');
+      };
   return (
     
     <View style={styles.container}>
@@ -35,15 +40,17 @@ export default function SignIn() {
 
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
+        <TextInput value={email} onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
+
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='lock' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput onChangeText={setPassword} style={styles.textInput} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
+        <TextInput value={password} onChangeText={setPassword} style={styles.textInput} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
         <Pressable onPress={()=>{hidden ? setHidden(false) : setHidden(true)}}>
             <FontAwesome name={hidden ? 'eye' : 'eye-slash'} size={24} color={'#9A9A9A'} style={styles.hiddenIcon} />
         </Pressable>
       </View>
+
       <View>
         <Pressable style={{marginLeft:220}} onPress={forgotPass}>
             <Text style={styles.forgotPassword} >I forgot my password</Text>
@@ -55,7 +62,7 @@ export default function SignIn() {
             <AntDesign name='arrowright' size={24} color={'white'} style={{alignSelf: 'center'}} />
         </Pressable>        
       </View>
-      <Text style={styles.footerText}>Don't have an account yet?<Text style={{color: '#0399fc', textDecorationLine: 'underline'}} onPress={()=>{router.navigate('/sign-up')}}>Create Account</Text> </Text>
+      <Text style={styles.footerText}>Don't have an account yet? <Text style={{color: '#0399fc', textDecorationLine: 'underline'}} onPress={()=>{router.navigate('/sign-up')}}>Create Account</Text> </Text>
         
        <View style={styles.leftImageContainer}>
             <ImageBackground source={require('../../../assets/images/bottomVector.png')} style={styles.leftImage} />
