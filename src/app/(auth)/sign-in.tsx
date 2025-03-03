@@ -34,7 +34,7 @@ export default function SignIn() {
       </View>
 
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
-        <FontAwesome name='user' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+        <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
         <TextInput onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
@@ -51,11 +51,11 @@ export default function SignIn() {
       </View>
       <View style={styles.signInButtonContainer}>
         <Text style={styles.signIn}>Sign In</Text>
-        <Pressable onPress={onSignIn} style={styles.signInButton}>
+        <Pressable onPress={onSignIn} style={({ pressed }) => [styles.signInButton,{ opacity: pressed ? 0.5 : 1.0 }]}>
             <AntDesign name='arrowright' size={24} color={'white'} style={{alignSelf: 'center'}} />
         </Pressable>        
       </View>
-      <Text style={styles.footerText}>Don't have an account yet? <Link style={{textDecorationLine:'underline', color: '#0399fc'}} href={'/sign-up'}>Create account</Link> </Text>
+      <Text style={styles.footerText}>Don't have an account yet?<Text style={{color: '#0399fc', textDecorationLine: 'underline'}} onPress={()=>{router.navigate('/sign-up')}}>Create Account</Text> </Text>
         
        <View style={styles.leftImageContainer}>
             <ImageBackground source={require('../../../assets/images/bottomVector.png')} style={styles.leftImage} />
