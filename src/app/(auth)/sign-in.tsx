@@ -35,11 +35,11 @@ export default function SignIn() {
 
       <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='user' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' />
+        <TextInput onChangeText={setEmail} style={styles.textInput} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
-      <View style={styles.inputContainer}>
+      <View style={{...styles.inputContainer, elevation: 10, borderWidth: Platform.OS === 'ios' ? 2 : 0, borderColor: 'black'}}>
         <FontAwesome name='lock' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput onChangeText={setPassword} style={styles.textInput} placeholder='Password' secureTextEntry={hidden ? true : false} />
+        <TextInput onChangeText={setPassword} style={styles.textInput} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
         <Pressable onPress={()=>{hidden ? setHidden(false) : setHidden(true)}}>
             <FontAwesome name={hidden ? 'eye' : 'eye-slash'} size={24} color={'#9A9A9A'} style={styles.hiddenIcon} />
         </Pressable>
@@ -92,7 +92,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         borderRadius: 20,
         marginHorizontal: 20,
-        elevation: 10,
         marginVertical: 20,
         alignItems: 'center',
         height: 60,
