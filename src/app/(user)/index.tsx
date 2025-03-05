@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Alert, View, Text, TouchableOpacity } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import * as Location from 'expo-location';  // Import the correct module
-import { Feather } from '@expo/vector-icons'; // Import Feather icons
+import MapView from 'react-native-maps';
+import * as Location from 'expo-location';
+import { Feather } from '@expo/vector-icons';
+import { useTheme } from '@react-navigation/native';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -12,6 +13,7 @@ const INITIAL_REGION = {
 };
 
 export default function TabOneScreen() {
+  const { dark } = useTheme();
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
 
@@ -57,7 +59,7 @@ export default function TabOneScreen() {
             }}
           />
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
-            <Feather name="navigation" size={20} color="white" />
+            <Feather name="navigation" size={20} color={dark ? "black" : "white"} />
           </TouchableOpacity>
         </>
       ) : (
@@ -92,5 +94,9 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     padding: 13,
     elevation: 5,
+    shadowColor:'black',
+    shadowOffset:{width:0, height:10},
+    shadowOpacity:0.5,
+    shadowRadius: 10,
   },
 });

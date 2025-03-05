@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useTheme } from '@react-navigation/native';
 
 interface TabBarButtonProps {
   onPress: () => void;
@@ -13,6 +14,8 @@ interface TabBarButtonProps {
 }
 
 const TabBarButton: React.FC<TabBarButtonProps> = ({ onPress, onLongPress, isFocused, routeName, label, color }) => {
+  const { dark } = useTheme();
+
   const icon: Record<string, (props: any) => JSX.Element> = {
     index: (props) => <Feather name="home" size={24} {...props} />,
     two: (props) => <Feather name="user" size={24} {...props} />,
@@ -46,14 +49,16 @@ const TabBarButton: React.FC<TabBarButtonProps> = ({ onPress, onLongPress, isFoc
     };
   });
 
+  const buttonColor = isFocused && dark ? '#000' : color;
+
   return (
     <Pressable onPress={onPress} onLongPress={onLongPress} style={styles.tabbarItem}>
       <Animated.View style={animatedIconStyle}>
         {IconComponent ? (
-          <IconComponent color={color} />
+          <IconComponent color={buttonColor} />
         ) : null}
       </Animated.View>
-      <Animated.Text style={[{ color, fontSize: 12 }, animatedTextStyle]}>
+      <Animated.Text style={[{ color: buttonColor, fontSize: 12 }, animatedTextStyle]}>
         {label}
       </Animated.Text>
     </Pressable>
