@@ -6,7 +6,7 @@ import { useState } from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
 
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
 
@@ -28,7 +28,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   });
 
   return (
-    <View onLayout={onTabbarLayout} style={styles.tabbar}>
+    <View onLayout={onTabbarLayout} style={[styles.tabbar, { backgroundColor: dark ? '#000' : '#fff' }]}>
       <Animated.View
         style={[
           animatedStyle,
@@ -96,12 +96,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff',
     paddingVertical: 10,
     borderRadius: 35,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 5,
   },
