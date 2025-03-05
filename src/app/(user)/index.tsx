@@ -3,6 +3,8 @@ import { StyleSheet, Alert, View, Text, TouchableOpacity } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';  // Import the correct module
 import { Feather } from '@expo/vector-icons'; // Import Feather icons
+import 'react-native-get-random-values';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -56,6 +58,7 @@ export default function TabOneScreen() {
               longitudeDelta: 0.0421,
             }}
           />
+
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
@@ -71,11 +74,12 @@ export default function TabOneScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    //flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   map: {
+    //flex:1,
     width: '100%',
     height: '100%',
   },
@@ -92,5 +96,9 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     padding: 13,
     elevation: 5,
+  },
+
+  textInput:{
+    width:'90%',
   },
 });

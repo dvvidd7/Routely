@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 //SCHIMB ECRANUL CU ROUTER NU CU LINK LA CREATE ACCOUNT!
 
@@ -28,12 +29,27 @@ export default function SignIn() {
         setPassword('');
       };
   return (
-    
+
     <View style={styles.container}>
+        <View>
+            <GooglePlacesAutocomplete
+                    placeholder='Search'
+                    onPress={(data, details = null) => {
+                    // 'details' is provided when fetchDetails = true
+                    console.log(data, details);
+                    }}
+                    query={{
+                    key: 'YOUR API KEY',
+                    language: 'en',
+                    }}
+                    styles={{container:styles.topSearch, textInput: styles.searchInput}}
+            />
+        </View>
       <Stack.Screen name='sign-in' options={{title:"Sign-In", headerShown: false}} />
       <View style={styles.topImageContainer}>
         <Image source={require('../../../assets/images/topVector.png')} style={styles.topImage} />
       </View>
+
       <View style={styles.textContainer}>
         <Text style={styles.title}>Sign In</Text>
       </View>
@@ -72,6 +88,18 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
+    topSearch:{
+
+    },
+    searchInput:{
+        borderWidth: 2,
+        borderColor: '#ccc',
+        height: 50,
+        borderRadius: 25,
+        paddingLeft: 25,
+        shadowColor: '#000',
+        elevation:2,
+    },
     container: {
         flex:1,
         backgroundColor: 'white',
