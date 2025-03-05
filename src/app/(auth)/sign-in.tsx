@@ -31,20 +31,6 @@ export default function SignIn() {
   return (
 
     <View style={styles.container}>
-        <View>
-            <GooglePlacesAutocomplete
-                    placeholder='Search'
-                    onPress={(data, details = null) => {
-                    // 'details' is provided when fetchDetails = true
-                    console.log(data, details);
-                    }}
-                    query={{
-                    key: 'YOUR API KEY',
-                    language: 'en',
-                    }}
-                    styles={{container:styles.topSearch, textInput: styles.searchInput}}
-            />
-        </View>
       <Stack.Screen name='sign-in' options={{title:"Sign-In", headerShown: false}} />
       <View style={styles.topImageContainer}>
         <Image source={require('../../../assets/images/topVector.png')} style={styles.topImage} />
@@ -88,18 +74,7 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-    topSearch:{
 
-    },
-    searchInput:{
-        borderWidth: 2,
-        borderColor: '#ccc',
-        height: 50,
-        borderRadius: 25,
-        paddingLeft: 25,
-        shadowColor: '#000',
-        elevation:2,
-    },
     container: {
         flex:1,
         backgroundColor: 'white',

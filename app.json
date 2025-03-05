@@ -27,7 +27,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "package": "com.web.app",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"

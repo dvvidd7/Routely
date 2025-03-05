@@ -18,6 +18,7 @@ export default function TabOneScreen() {
   const { dark } = useTheme();
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -42,11 +43,31 @@ export default function TabOneScreen() {
     const location = await Location.getCurrentPositionAsync();
     setUserLocation(location.coords);
   };
-
+//IMPLEMENTEZ DARK MODE PE SEARCH BAR (ERIC)
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
+          <View style={{flex: 1, alignItems: 'center'}} >
+                <GooglePlacesAutocomplete
+                        placeholder='Search location'
+                        onPress={(data, details = null) => {
+                        // 'details' is provided when fetchDetails = true
+                        console.log(data, details);
+                        }}
+                        query={{
+                        key: 'APIKEY',
+                        language: 'en',
+                        }}
+                        nearbyPlacesAPI='GooglePlacesSearch'
+                        debounce={200}
+                        styles={{container:styles.topSearch, textInput: isFocused ? styles.searchInputFocused : styles.searchInput}}
+                        textInputProps={{
+                          onFocus: () => setIsFocused(true),
+                          onBlur: () => setIsFocused(false)
+                        }}
+                />
+            </View>
           <MapView
             style={styles.map}
             initialRegion={INITIAL_REGION}
@@ -80,6 +101,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  topSearch:{
+    position: 'absolute',
+    top:30,
+    width: '95%',
+    zIndex: 1,
+},
+  searchInput:{
+
+      borderWidth: 2,
+      borderColor: '#ccc',
+      height: 50,
+      borderRadius: 25,
+      paddingLeft: 25,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 20,
+  },
+  searchInputFocused:{
+    borderWidth: 2,
+    borderColor: '#0384fc',
+    height: 50,
+    borderRadius: 25,
+    paddingLeft: 25,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 20,
+},
   map: {
     //flex:1,
     width: '100%',
