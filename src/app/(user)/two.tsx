@@ -10,6 +10,7 @@ import { ThemeContext } from '../_layout';
 const data = [
   { label: 'Bus', value: 'bus' },
   { label: 'Car', value: 'car' },
+  { label: 'Both', value: 'both' },
 ];
 
 export default function TabTwoScreen() {
@@ -52,7 +53,7 @@ export default function TabTwoScreen() {
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
       <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
-        Profile
+        Account
       </Text>
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
@@ -86,7 +87,7 @@ export default function TabTwoScreen() {
           <View style={styles.dropdownContainer}>
             <Dropdown
               style={[styles.dropdown, isDarkMode && styles.dropdownDark, isFocus && { borderColor: '#0384fc' }]}
-              placeholderStyle={[styles.placeholderStyle, isDarkMode && { color: 'black' }]}
+              placeholderStyle={[styles.placeholderStyle, isDarkMode && { color: 'white' }]}
               selectedTextStyle={[styles.selectedTextStyle, isDarkMode && { color: 'white' }]}
               inputSearchStyle={styles.inputSearchStyle}
               iconStyle={styles.iconStyle}

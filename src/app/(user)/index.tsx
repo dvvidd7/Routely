@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { GOOGLE_MAPS_APIKEY } from '@env';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -30,7 +31,7 @@ export default function TabOneScreen() {
         setHasPermission(false);
       } else {
         setHasPermission(true);
-        
+
         // Get the user's current location
         const location = await Location.getCurrentPositionAsync();
         setUserLocation(location.coords);
@@ -43,31 +44,40 @@ export default function TabOneScreen() {
     const location = await Location.getCurrentPositionAsync();
     setUserLocation(location.coords);
   };
-//IMPLEMENTEZ DARK MODE PE SEARCH BAR (ERIC)
+
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          <View style={{flex: 1, alignItems: 'center'}} >
-                <GooglePlacesAutocomplete
-                        placeholder='Search location'
-                        onPress={(data, details = null) => {
-                        // 'details' is provided when fetchDetails = true
-                        console.log(data, details);
-                        }}
-                        query={{
-                        key: 'APIKEY',
-                        language: 'en',
-                        }}
-                        nearbyPlacesAPI='GooglePlacesSearch'
-                        debounce={200}
-                        styles={{container:styles.topSearch, textInput: isFocused ? styles.searchInputFocused : styles.searchInput}}
-                        textInputProps={{
-                          onFocus: () => setIsFocused(true),
-                          onBlur: () => setIsFocused(false)
-                        }}
-                />
-            </View>
+          <View style={{ flex: 1, alignItems: 'center', height:'100%' }} >
+            <GooglePlacesAutocomplete
+              placeholder='Search location'
+              fetchDetails={true}
+              onPress={(data, details = null) => {
+                console.log("Selected Location:", details);
+                console.log(data, details);
+              }}
+              query={{
+                key: GOOGLE_MAPS_APIKEY,
+                language: 'en',
+              }}
+              nearbyPlacesAPI="GooglePlacesSearch"
+              debounce={400}
+              styles={{
+                container: styles.topSearch,
+                textInput: [
+                  styles.searchInput,
+                  isFocused && styles.searchInputFocused,
+                  dark && styles.searchInputDark
+                ],
+              }}
+              textInputProps={{
+                onFocus: () => setIsFocused(true),
+                onBlur: () => setIsFocused(false),
+                placeholderTextColor: dark ? 'white' : 'black',
+              }}
+            />
+          </View>
           <MapView
             style={styles.map}
             initialRegion={INITIAL_REGION}
@@ -81,7 +91,6 @@ export default function TabOneScreen() {
               longitudeDelta: 0.0421,
             }}
           />
-
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color={dark ? "black" : "white"} />
           </TouchableOpacity>
@@ -97,43 +106,38 @@ export default function TabOneScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    //flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topSearch:{
+  topSearch: {
     position: 'absolute',
-    top:30,
-    width: '95%',
+    top: 30,
+    width: '80%',
     zIndex: 1,
-},
-  searchInput:{
-
-      borderWidth: 2,
-      borderColor: '#ccc',
-      height: 50,
-      borderRadius: 25,
-      paddingLeft: 25,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 1},
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 20,
+    marginTop: 60,
   },
-  searchInputFocused:{
+  searchInput: {
     borderWidth: 2,
-    borderColor: '#0384fc',
+    borderColor: 'gray',
     height: 50,
     borderRadius: 25,
     paddingLeft: 25,
+    backgroundColor: 'white',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 20,
-},
+  },
+  searchInputFocused: {
+    borderWidth: 2,
+    borderColor: '#0384fc',
+  },
+  searchInputDark: {
+    backgroundColor: 'black',
+    color: 'white',
+  },
   map: {
-    //flex:1,
     width: '100%',
     height: '100%',
   },
@@ -150,13 +154,12 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     padding: 13,
     elevation: 5,
-    shadowColor:'black',
-    shadowOffset:{width:0, height:10},
-    shadowOpacity:0.5,
+    shadowColor: 'black',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
     shadowRadius: 10,
   },
-
-  textInput:{
-    width:'90%',
+  textInput: {
+    width: '90%',
   },
 });
