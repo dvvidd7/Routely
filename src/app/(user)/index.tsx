@@ -21,7 +21,6 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [isFocused, setIsFocused] = useState<boolean>(false);
-  
 
   useEffect(() => {
     (async () => {
