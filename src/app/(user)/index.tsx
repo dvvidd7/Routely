@@ -65,7 +65,7 @@ export default function TabOneScreen() {
               }}
               onFail={error => console.error(error)}
               nearbyPlacesAPI="GooglePlacesSearch"
-              debounce={400}
+              debounce={200}
               styles={{
                 container: styles.topSearch,
                 textInput: [
@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 30,
     width: '80%',
+    height:'100%',
     zIndex: 1,
     marginTop: 60,
   },
