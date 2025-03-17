@@ -5,6 +5,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, createContext, useContext } from 'react';
 import 'react-native-reanimated';
+import AuthProvider from '@/providers/AuthProvider';
 
 import { useColorScheme } from '../components/useColorScheme';
 
@@ -61,11 +62,13 @@ function RootLayoutNav() {
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
       <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
+       <AuthProvider>
         <Stack>
           <Stack.Screen name="(user)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
+       </AuthProvider>
       </ThemeProvider>
     </ThemeContext.Provider>
   );

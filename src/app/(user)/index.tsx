@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, Alert, View, Text, TouchableOpacity } from 'react-native';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -21,6 +21,7 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [isFocused, setIsFocused] = useState<boolean>(false);
+  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     (async () => {
@@ -44,15 +45,23 @@ export default function TabOneScreen() {
   const handleMyLocationPress = async () => {
     const location = await Location.getCurrentPositionAsync();
     setUserLocation(location.coords);
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }, 1000);
+    }
   };
 
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          <View style={{ flex: 1, alignItems: 'center', height:'100%' }} >
+          <View style={{ flex: 1, alignItems: 'center', height: '100%' }} >
             <GooglePlacesAutocomplete
-              placeholder='Search location'
+              placeholder='Where do you want to go?'
               fetchDetails={true}
               onPress={(data, details = null) => {
                 console.log("Selected Location:", details);
@@ -81,6 +90,7 @@ export default function TabOneScreen() {
             />
           </View>
           <MapView
+            ref={mapRef}
             style={styles.map}
             customMapStyle={dark ? mapDark : []}
             initialRegion={INITIAL_REGION}
@@ -116,7 +126,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 30,
     width: '80%',
-    height:'100%',
+    height: '100%',
     zIndex: 1,
     marginTop: 60,
   },

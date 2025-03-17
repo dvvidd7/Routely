@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useTheme } from '@react-navigation/native';
+import { supabase } from '@/lib/supabase';
 
 //SCHIMB ECRANUL CU ROUTER NU CU LINK LA CREATE ACCOUNT!
 
@@ -18,18 +19,26 @@ export default function SignIn() {
     const {dark} = useTheme();
     const router = useRouter();
     const os = Platform.OS;
+    const [loading, setLoading] = useState(false);
     const forgotPass = () => {
         //De refacut la baza de date:
         Alert.alert("Forgot password?", "You will receive an email with a password reset link.")
     }
-    const onSignIn = () => {
-        console.log(`Sign in detected: ${email} ${password} `);
-        resetFields();
-    }
+    // const onSignIn = () => {
+    //     console.log(`Sign in detected: ${email} ${password} `);
+    //     resetFields();
+    // }
     const resetFields = () => {
         setEmail('');
         setPassword('');
       };
+    async function signInWithEmail() {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        setLoading(true);
+    
+        if (error) Alert.alert(error.message);
+        setLoading(false);
+      }  
   return (
 
     <View style={ dark ? styles.containerDark : styles.container}>
@@ -63,7 +72,7 @@ export default function SignIn() {
 
       <View style={styles.signInButtonContainer}>
         <Text style={{...styles.signIn, color: dark ? 'white' : 'black'}}>Sign In</Text>
-        <Pressable onPress={onSignIn} style={({ pressed }) => [styles.signInButton,{ opacity: pressed ? 0.5 : 1.0 }]}>
+        <Pressable onPress={signInWithEmail} disabled={loading} style={({ pressed }) => [styles.signInButton,{ opacity: pressed ? 0.5 : 1.0 }]}>
             <AntDesign name='arrowright' size={24} color={'white'} style={{alignSelf: 'center'}} />
         </Pressable>        
       </View>

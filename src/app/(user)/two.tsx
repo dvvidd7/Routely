@@ -1,11 +1,13 @@
-import React, { JSXElementConstructor, ReactElement, useState, useContext } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch } from 'react-native';
+import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert } from 'react-native';
 import { Text } from '@/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -21,6 +23,18 @@ export default function TabTwoScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [transport, setTransport] = useState(null);
   const [isFocus, setIsFocus] = useState(false);
+  const [email, setEmail] = useState('');
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setEmail(user.email ?? '');
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handlePress = () => {
     if (newUsername.trim()) {
@@ -28,6 +42,23 @@ export default function TabTwoScreen() {
       setNewUsername('');
       setIsEditing(false);
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Are you sure?',
+      'Do you really want to log out?',
+      [
+        { text: 'No', style: 'cancel' },
+        { 
+          text: 'Yes', 
+          onPress: async () => {
+            await supabase.auth.signOut();
+            router.push('/sign-in');
+          } 
+        },
+      ]
+    );
   };
 
   const handlePencilPress = () => {
@@ -66,7 +97,7 @@ export default function TabTwoScreen() {
         </View>
         {!isEditing && (
           <Text style={[styles.email, { color: isDarkMode ? 'white' : 'black' }]}>
-            ion@gmail.com
+            {email}
           </Text>
         )}
         {isEditing && (
@@ -117,6 +148,11 @@ export default function TabTwoScreen() {
                 onValueChange={toggleTheme}
                 value={isDarkMode}
               />
+            </View>
+            <View>
+              <Pressable onPress={handleLogout} style={styles.logoutButton}>
+                 <Text style={styles.logoutText}>Log Out</Text>
+              </Pressable>
             </View>
           </View>
         )}
@@ -240,12 +276,25 @@ const styles = StyleSheet.create({
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    //marginTop: 20,
-    marginBottom:130,
-    alignSelf:'center'
+    marginBottom: 130,
+    alignSelf: 'center',
   },
   switchText: {
     fontSize: 16,
     marginRight: 10,
+  },
+  logoutButton: {
+    backgroundColor: 'transparent', 
+    padding: 1,  
+    width: 65,
+    alignItems: 'center',
+    alignSelf: 'center', 
+  },
+  logoutText: {
+    color: 'red', 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    textAlign: 'center',
+    marginBottom: 40, 
   },
 });
