@@ -61,6 +61,7 @@ export default function TabOneScreen() {
         <>
           <View style={{ flex: 1, alignItems: 'center', height: '100%' }} >
             <GooglePlacesAutocomplete
+              listViewDisplayed="auto"
               placeholder='Where do you want to go?'
               fetchDetails={true}
               onPress={(data, details = null) => {
