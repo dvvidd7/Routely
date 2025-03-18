@@ -5,7 +5,7 @@ import { Link, Redirect } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 
 const index = () => {
-  const {session, loading} = useAuth();
+  const {session, loading, isAdmin} = useAuth();
 
   if(loading)
     {
@@ -13,7 +13,10 @@ const index = () => {
     }
 
   if(!session) {
-    return <Redirect href={'sign-in'}/>
+    return <Redirect href={'/sign-in'}/>
+  }
+  if(!isAdmin){
+    return <Redirect href={'/(user)'} />
   }
 
   return (

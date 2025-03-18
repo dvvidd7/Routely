@@ -72,7 +72,7 @@ export default function TabOneScreen() {
                 language: 'en',
               }}
               onFail={error => console.error(error)}
-              nearbyPlacesAPI="GooglePlacesSearch"
+              //nearbyPlacesAPI="GooglePlacesSearch"
               debounce={200}
               styles={{
                 container: styles.topSearch,

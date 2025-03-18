@@ -16,6 +16,7 @@ export default function SignIn() {
   const [hidden, setHidden] = useState<boolean>(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [user, setUser] = useState('');
   const router = useRouter();
   const { dark } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,9 @@ export default function SignIn() {
 
     if (error) Alert.alert(error.message);
     setLoading(false);
+    resetFields();
   }
+
   return (
 
     <View style={dark ? styles.containerDark : styles.container}>
@@ -44,7 +47,6 @@ export default function SignIn() {
       <View style={styles.textContainer}>
         <Text style={{ ...styles.title, color: dark ? 'white' : 'black' }}>Create account</Text>
       </View>
-
 
       <View style={{ ...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0 }}>
         <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />

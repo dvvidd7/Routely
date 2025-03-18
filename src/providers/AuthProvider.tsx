@@ -5,33 +5,46 @@ import { createContext, PropsWithChildren, useContext, useEffect, useState } fro
 type AuthData={
     session: Session | null
     loading: boolean
+    profile: any,
+    isAdmin: boolean
+    user: string,
+    fav_transport: string,
 };
 
 const AuthContext = createContext<AuthData>({
     session:null,
     loading:true,
+    profile: null,
+    isAdmin: false,
+    user: '',
+    fav_transport: ''
 });
 
 export default function AuthProvider({children}: PropsWithChildren)
 {
     const [session, setSession] = useState<Session | null>(null)
-    const [loading, setLodaing] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [profile, setProfile] = useState(null);
 
     useEffect(()=>{
         const fetchSession = async() =>{
-           const {data} = await supabase.auth.getSession()
-           setSession(data.session);
-           setLodaing(false);
+           const {data:{session}} = await supabase.auth.getSession()
+           setSession(session);
+           if(session){
+                const {data} = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+                setProfile(data || null);
+           }
+           setLoading(false);
         };
-        fetchSession()
-        // supabase.auth.onAuthStateChange((_event, session) => {
-        //     setSession(session);
-        //   });
+        fetchSession();
+        supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+          });
 
     }, []);
 
     return (
-        <AuthContext.Provider value={{session, loading}}>
+        <AuthContext.Provider value={{session, loading, profile, isAdmin: profile?.group === 'ADMIN', user: profile?.username, fav_transport: ''}}>
             {children}
         </AuthContext.Provider>
     )
