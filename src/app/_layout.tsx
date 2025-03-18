@@ -6,7 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, createContext, useContext } from 'react';
 import 'react-native-reanimated';
 import AuthProvider from '@/providers/AuthProvider';
-
+import QueryProvider from '@/providers/QueryProvider';
 import { useColorScheme } from '../components/useColorScheme';
 
 export {
@@ -63,11 +63,13 @@ function RootLayoutNav() {
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
       <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
        <AuthProvider>
+        <QueryProvider>
         <Stack>
           <Stack.Screen name="(user)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
+        </QueryProvider>
        </AuthProvider>
       </ThemeProvider>
     </ThemeContext.Provider>

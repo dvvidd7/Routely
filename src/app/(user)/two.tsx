@@ -8,6 +8,8 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
+import { useUpdateTransport, useUpdateUser } from '@/api/username';
+import { useAuth } from '@/providers/AuthProvider';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -21,16 +23,26 @@ export default function TabTwoScreen() {
   const [username, setUsername] = useState('User');
   const [newUsername, setNewUsername] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [transport, setTransport] = useState(null);
+  const [transport, setTransport] = useState('');
   const [isFocus, setIsFocus] = useState(false);
   const [email, setEmail] = useState('');
   const router = useRouter();
+  const {user: dataUsername, fav_transport} = useAuth();
+  const {mutate:updateUsername} = useUpdateUser();
+  const {mutate:updateTransport} = useUpdateTransport();
+  //const {data:dataUsername} = useGetUser();
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setEmail(user.email ?? '');
+      }
+      if(dataUsername){
+        setUsername(dataUsername);
+      }
+      if(fav_transport){
+        setTransport(fav_transport);
       }
     };
     fetchUser();
@@ -39,6 +51,7 @@ export default function TabTwoScreen() {
   const handlePress = () => {
     if (newUsername.trim()) {
       setUsername(newUsername);
+      updateUsername({user: newUsername});
       setNewUsername('');
       setIsEditing(false);
     }
@@ -131,7 +144,7 @@ export default function TabTwoScreen() {
               onFocus={() => setIsFocus(true)}
               onBlur={() => setIsFocus(false)}
               onChange={item => {
-                setTransport(item.value);
+                updateTransport({fav_transport: item.value});
                 setIsFocus(false);
               }}
               renderLeftIcon={() => (
@@ -193,7 +206,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   input: {
-    height: 40,
+    height: 50,
     borderWidth: 1,
     marginTop: 20,
     marginBottom: 25,
