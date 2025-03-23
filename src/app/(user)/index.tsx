@@ -6,8 +6,9 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { GOOGLE_MAPS_V3_APIKEY } from '@env';
+import { GOOGLE_MAPS_PLACES_LEGACY } from '@env';
 import { mapDark } from '@/constants/darkMap';
+import { ScrollView } from 'react-native';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -59,21 +60,19 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          <View style={{ flex: 1, alignItems: 'center', height: '100%' }} >
+          {/* <View style={{ flex: 1, height: '100%', alignItems:'center', zIndex:5 }} > */}
             <GooglePlacesAutocomplete
-              placeholder='Where do you want to go?'
+              placeholder='Search'
               fetchDetails={true}
               onPress={(data, details = null) => {
                 console.log("Selected Location:", details);
                 console.log(data, details);
               }}
               query={{
-                key: GOOGLE_MAPS_V3_APIKEY,
+                key: GOOGLE_MAPS_PLACES_LEGACY,
                 language: 'en',
               }}
               onFail={error => console.error(error)}
-              //nearbyPlacesAPI="GooglePlacesSearch"
-              debounce={200}
               styles={{
                 container: styles.topSearch,
                 textInput: [
@@ -88,7 +87,7 @@ export default function TabOneScreen() {
                 placeholderTextColor: dark ? 'white' : 'black',
               }}
             />
-          </View>
+          {/* </View> */}
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
     top: 30,
     width: '80%',
     height: '100%',
-    zIndex: 1,
+    zIndex: 5,
     marginTop: 60,
   },
   searchInput: {

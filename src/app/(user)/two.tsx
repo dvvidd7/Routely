@@ -27,7 +27,7 @@ export default function TabTwoScreen() {
   const [isFocus, setIsFocus] = useState(false);
   const [email, setEmail] = useState('');
   const router = useRouter();
-  const {user: dataUsername, fav_transport} = useAuth();
+  const {user: dataUsername, profile} = useAuth();
   const {mutate:updateUsername} = useUpdateUser();
   const {mutate:updateTransport} = useUpdateTransport();
   //const {data:dataUsername} = useGetUser();
@@ -41,8 +41,8 @@ export default function TabTwoScreen() {
       if(dataUsername){
         setUsername(dataUsername);
       }
-      if(fav_transport){
-        setTransport(fav_transport);
+      if(profile.fav_transport){
+        setTransport(profile.fav_transport);
       }
     };
     fetchUser();
@@ -145,10 +145,12 @@ export default function TabTwoScreen() {
               onBlur={() => setIsFocus(false)}
               onChange={item => {
                 updateTransport({fav_transport: item.value});
+                setTransport(transport);
                 setIsFocus(false);
               }}
               renderLeftIcon={() => (
                 <AntDesign style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name="car" size={20} />
+                // <FontAwesome style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name={transport === "bus" ? "bus" : "car"} size={20} />
               )}
               renderItem={renderItem}
             />

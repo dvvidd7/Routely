@@ -8,7 +8,6 @@ type AuthData={
     profile: any,
     isAdmin: boolean
     user: string,
-    fav_transport: string,
 };
 
 const AuthContext = createContext<AuthData>({
@@ -17,7 +16,6 @@ const AuthContext = createContext<AuthData>({
     profile: null,
     isAdmin: false,
     user: '',
-    fav_transport: ''
 });
 
 export default function AuthProvider({children}: PropsWithChildren)
@@ -44,7 +42,7 @@ export default function AuthProvider({children}: PropsWithChildren)
     }, []);
 
     return (
-        <AuthContext.Provider value={{session, loading, profile, isAdmin: profile?.group === 'ADMIN', user: profile?.username, fav_transport: ''}}>
+        <AuthContext.Provider value={{session, loading, profile, isAdmin: profile?.group === 'ADMIN', user: profile?.username}}>
             {children}
         </AuthContext.Provider>
     )
