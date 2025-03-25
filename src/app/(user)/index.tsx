@@ -11,6 +11,7 @@ import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-nat
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
+import { getUberRideEstimate } from '@/lib/getUberPrices';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -74,7 +75,8 @@ export default function TabOneScreen() {
       mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
-    }, 200); // Delay to ensure markers are rendered
+    }, 200);
+    console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
   }, [destination])
 
   const handleMyLocationPress = async () => {
