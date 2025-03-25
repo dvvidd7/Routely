@@ -1,21 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
-import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, FlatList } from "react-native";
-import MapView from "react-native-maps";
-import * as Location from "expo-location";
-import { Feather } from "@expo/vector-icons";
-import { useTheme } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { setDestination, selectDestination } from "@/slices/navSlice";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
+import { mapDark } from '@/constants/darkMap';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -42,6 +37,7 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
@@ -94,6 +90,16 @@ export default function TabOneScreen() {
       }
     } catch (error) {
       Alert.alert("Error", "Could not get current location.");
+    }
+  };
+  const handleAutocompletePress = async () => {
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
+        longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }, 1000);
     }
   };
 
@@ -239,6 +245,10 @@ const styles = StyleSheet.create({
     zIndex: 5,
     marginTop: 60,
     alignSelf:"center"
+  },
+  searchInputFocused: {
+    borderWidth: 2,
+    borderColor: '#0384fc',
   },
   searchInput: {
     borderWidth: 2,
