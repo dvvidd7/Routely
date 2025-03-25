@@ -32,13 +32,19 @@ export default function SignIn() {
         setEmail('');
         setPassword('');
       };
-    async function signInWithEmail() {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+      async function signInWithEmail() {
         setLoading(true);
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
     
-        if (error) Alert.alert(error.message);
-        setLoading(false);
-      }  
+        if (error) {
+            Alert.alert(error.message);
+            setLoading(false);
+        } else {
+            // Redirect to the index page after successful sign-in
+            router.push('../(user)');
+        }
+    }
+
   return (
 
     <View style={ dark ? styles.containerDark : styles.container}>
