@@ -60,18 +60,20 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
-  useEffect(() => {
-    if (destination) {
-      handleAutocompletePress();
-    }
-  }, [destination]);
+  // useEffect(() => {
+  //   if (destination) {
+  //     handleAutocompletePress();
+  //   }
+  // }, [destination]);
 
   useEffect(() => {
     if (!destination) return;
 
-    mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
-      edgePadding: { top: 50, bottom: 50, left: 50, right: 50 }
-    })
+    setTimeout(() => {
+      mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+        edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+    }, 200); // Delay to ensure markers are rendered
   }, [destination])
 
   const handleMyLocationPress = async () => {
@@ -87,18 +89,13 @@ export default function TabOneScreen() {
             longitudeDelta: 0.0421,
           },
           1000
+
         );
       }
     } catch (error) {
       Alert.alert("Error", "Could not get current location.");
     }
   };
-
-  const handleTransportSelection = (mode: string) => {
-    Alert.alert("Transport Mode Selected", `You chose: ${mode}`);
-    setTransportModalVisible(false);
-  };
-
   const handleAutocompletePress = async () => {
     if (mapRef.current) {
       mapRef.current.animateToRegion({
@@ -169,8 +166,10 @@ export default function TabOneScreen() {
             region={{
               latitude: userLocation?.latitude || INITIAL_REGION.latitude,
               longitude: userLocation?.longitude || INITIAL_REGION.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
+              // latitudeDelta: 0.0922,
+              // longitudeDelta: 0.0421,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
             }}
           >
             {destination && userLocation?.latitude && userLocation?.longitude && (
