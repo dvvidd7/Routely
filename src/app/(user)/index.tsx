@@ -65,11 +65,11 @@ export default function TabOneScreen() {
   //   }
   // }, [destination]);
 
-  useEffect(()=>{
-    if(!destination) return;
+  useEffect(() => {
+    if (!destination) return;
 
     mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
-      edgePadding: {top: 50, bottom: 50, left: 50, right: 50}
+      edgePadding: { top: 50, bottom: 50, left: 50, right: 50 }
     })
   }, [destination])
 
@@ -130,27 +130,28 @@ export default function TabOneScreen() {
                   location: details.geometry.location,
                   description: data.description,
                 }))
-              }}
-              query={{
-                key: GOOGLE_MAPS_PLACES_LEGACY,
-                language: 'en',
-              }}
-              onFail={error => console.error(error)}
-              styles={{
-                container: styles.topSearch,
-                textInput: [
-                  styles.searchInput,
-                  isFocused && styles.searchInputFocused,
-                  dark && styles.searchInputDark
-                ],
-              }}
-              textInputProps={{
-                onFocus: () => setIsFocused(true),
-                onBlur: () => setIsFocused(false),
-                placeholderTextColor: dark ? 'white' : 'black',
-              }}
-              debounce={300}
-            />
+            }}
+            query={{
+              key: GOOGLE_MAPS_PLACES_LEGACY,
+              language: 'en',
+            }}
+            onFail={error => console.error(error)}
+            styles={{
+              container: styles.topSearch,
+              textInput: [
+                styles.searchInput,
+                isFocused && styles.searchInputFocused,
+                dark && styles.searchInputDark
+              ],
+            }}
+            textInputProps={{
+              onFocus: () => setIsFocused(true),
+              onBlur: () => setIsFocused(false),
+              placeholderTextColor: dark ? 'white' : 'black',
+            }}
+            debounce={300}
+            enablePoweredByContainer={false}
+          />
           {/* </View> */}
           <MapView
             ref={mapRef}
@@ -182,7 +183,7 @@ export default function TabOneScreen() {
               />
             )}
             {destination?.location && userLocation && (
-              <Marker 
+              <Marker
                 coordinate={{
                   latitude: destination.location.lat,
                   longitude: destination.location.lng,
@@ -193,22 +194,28 @@ export default function TabOneScreen() {
               />
             )}
             {userLocation && destination && (
-              <Marker 
-              coordinate={{
-                latitude: userLocation?.latitude,
-                longitude: userLocation?.longitude,
-              }}
-              title='Origin'
-              identifier='origin'
-            />
+              <Marker
+                coordinate={{
+                  latitude: userLocation?.latitude,
+                  longitude: userLocation?.longitude,
+                }}
+                title='Origin'
+                identifier='origin'
+              />
             )}
           </MapView>
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.controlPanelButton} onPress={handleControlPanelButton}>
-            <Feather name="alert-triangle" size={20} color="black" />
+          <TouchableOpacity
+            style={[
+              styles.HazardButton,
+              { backgroundColor: dark ? "black" : "white" }
+            ]}
+            onPress={handleControlPanelButton}
+          >
+            <Feather name="alert-triangle" size={24} color="#eed202"/>
           </TouchableOpacity>
 
           {/* Hazard Selection Modal */}
@@ -220,7 +227,7 @@ export default function TabOneScreen() {
                   data={hazards}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.hazardButton} onPress={() => handleSelectHazard(item)}>
+                    <TouchableOpacity style={styles.hazardButtonOptions} onPress={() => handleSelectHazard(item)}>
                       <Text style={styles.hazardText}>
                         {item.icon} {item.label}
                       </Text>
@@ -244,12 +251,12 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topSearch: {
-    position:"absolute",
+    position: "absolute",
     top: 30,
     width: "85%",
     zIndex: 5,
     marginTop: 60,
-    alignSelf:"center"
+    alignSelf: "center"
   },
   searchInputFocused: {
     borderWidth: 2,
@@ -282,15 +289,14 @@ const styles = StyleSheet.create({
     right: 35,
     backgroundColor: "#0384fc",
     borderRadius: 60,
-    padding: 13,
+    padding: 20,
   },
-  controlPanelButton: {
+  HazardButton: {
     position: "absolute",
     bottom: 180,
     left: 35,
-    backgroundColor: "#ffe900",
     borderRadius: 60,
-    padding: 13,
+    padding: 20,
   },
   modalContainer: {
     flex: 1,
@@ -302,8 +308,19 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold", textAlign: "center", marginBottom: 10 },
-  hazardButton: { padding: 15, marginVertical: 5, backgroundColor: "#ddd", borderRadius: 10, alignItems: "center" },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10
+  },
+  hazardButtonOptions: {
+    padding: 15,
+    marginVertical: 5,
+    backgroundColor: "#ddd",
+    borderRadius: 15,
+    alignItems: "center"
+  },
   hazardText: { fontSize: 16 },
   closeButton: { marginTop: 10, padding: 10, backgroundColor: "#ff4d4d", borderRadius: 10, alignItems: "center" },
   closeButtonText: { color: "white", fontWeight: "bold" },
