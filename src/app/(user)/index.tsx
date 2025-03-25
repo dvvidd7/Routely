@@ -68,9 +68,11 @@ export default function TabOneScreen() {
   useEffect(() => {
     if (!destination) return;
 
-    mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
-      edgePadding: { top: 50, bottom: 50, left: 50, right: 50 }
-    })
+    setTimeout(() => {
+      mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+        edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+    }, 200); // Delay to ensure markers are rendered
   }, [destination])
 
   const handleMyLocationPress = async () => {
@@ -93,18 +95,18 @@ export default function TabOneScreen() {
       Alert.alert("Error", "Could not get current location.");
     }
   };
-  const handleAutocompletePress = async () => {
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
-        longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
-        //latitudeDelta: 0.0922,
-        //longitudeDelta: 0.0421,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      }, 1000);
-    }
-  };
+  // const handleAutocompletePress = async () => {
+  //   if (mapRef.current) {
+  //     mapRef.current.animateToRegion({
+  //       latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
+  //       longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
+  //       //latitudeDelta: 0.0922,
+  //       //longitudeDelta: 0.0421,
+  //       latitudeDelta: 0.005,
+  //       longitudeDelta: 0.005,
+  //     }, 1000);
+  //   }
+  // };
 
   const handleControlPanelButton = () => {
     setModalVisible(true);
