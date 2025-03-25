@@ -2,7 +2,7 @@ import { RootState } from "@/app/store";
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-    origin: null,
+    origin: null as { location: { lat: number; lng: number }; description: string } | null,
     destination: null as { location: { lat: number; lng: number }; description: string } | null,
     travelTimeInformation: null,
 }

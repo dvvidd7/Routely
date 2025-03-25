@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, Alert, View, Text, TouchableOpacity } from 'react-native';
-import MapView from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { mapDark } from '@/constants/darkMap';
 import { ScrollView } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setOrigin, setDestination, selectDestination } from '@/slices/navSlice';
+import MapViewDirections from 'react-native-maps-directions';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -52,6 +53,14 @@ export default function TabOneScreen() {
     }
   }, [destination]);
 
+  useEffect(()=>{
+    if(!destination) return;
+
+    mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+      edgePadding: {top: 50, bottom: 50, left: 50, right: 50}
+    })
+  }, [destination])
+
   const handleMyLocationPress = async () => {
     const location = await Location.getCurrentPositionAsync();
     setUserLocation(location.coords);
@@ -90,8 +99,6 @@ export default function TabOneScreen() {
                   location: details?.geometry.location,
                   description: data.description,
                 }))
-                //handleAutocompletePress();
-                console.log(destination);
               }}
               query={{
                 key: 'AIzaSyDe5nUC7KKAhkysUfBB9ofQ2FKRM9rE_Qc',
@@ -128,7 +135,41 @@ export default function TabOneScreen() {
               latitudeDelta: 0.0922,
               longitudeDelta: 0.0421,
             }}
-          />
+          >
+            {destination && userLocation?.latitude && userLocation?.longitude && (
+              <MapViewDirections
+                origin={{
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude
+                }}
+                destination={destination.description}
+                apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                strokeWidth={5}
+                strokeColor='black'
+              />
+            )}
+            {destination?.location && userLocation && (
+              <Marker 
+                coordinate={{
+                  latitude: destination.location.lat,
+                  longitude: destination.location.lng,
+                }}
+                title='Destination'
+                description={destination.description}
+                identifier='destination'
+              />
+            )}
+            {userLocation && destination && (
+              <Marker 
+              coordinate={{
+                latitude: userLocation?.latitude,
+                longitude: userLocation?.longitude,
+              }}
+              title='Origin'
+              identifier='origin'
+            />
+            )}
+          </MapView>
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color={dark ? "black" : "white"} />
           </TouchableOpacity>
