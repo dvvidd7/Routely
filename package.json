@@ -13,7 +13,11 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@expo/vector-icons": "^14.0.2",
+    "@mui/icons-material": "^6.4.8",
+    "@mui/material": "^6.4.8",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/geolocation": "^3.4.0",
     "@react-navigation/native": "^7.0.14",
