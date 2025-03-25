@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setDestination, selectDestination } from "@/slices/navSlice";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
+import { mapDark } from '@/constants/darkMap';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -120,6 +121,7 @@ export default function TabOneScreen() {
           <MapView
             ref={mapRef}
             style={styles.map}
+            customMapStyle={dark ? mapDark : []}
             initialRegion={INITIAL_REGION}
             showsUserLocation={true}
             region={
