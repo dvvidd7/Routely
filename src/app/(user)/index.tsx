@@ -7,7 +7,7 @@ import { useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
 import { useDispatch, useSelector } from "react-redux";
 import { setDestination, selectDestination } from "@/slices/navSlice";
-import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
+import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
@@ -38,8 +38,10 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [transportModalVisible, setTransportModalVisible] = useState(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
+  const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
 
@@ -97,18 +99,16 @@ export default function TabOneScreen() {
       Alert.alert("Error", "Could not get current location.");
     }
   };
-  // const handleAutocompletePress = async () => {
-  //   if (mapRef.current) {
-  //     mapRef.current.animateToRegion({
-  //       latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
-  //       longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
-  //       //latitudeDelta: 0.0922,
-  //       //longitudeDelta: 0.0421,
-  //       latitudeDelta: 0.005,
-  //       longitudeDelta: 0.005,
-  //     }, 1000);
-  //   }
-  // };
+  const handleAutocompletePress = async () => {
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
+        longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }, 1000);
+    }
+  };
 
   const handleControlPanelButton = () => {
     setModalVisible(true);
@@ -119,11 +119,29 @@ export default function TabOneScreen() {
     setModalVisible(false);
   };
 
+  const handleCancelTransportSelection = () => {
+    setTransportModalVisible(false);
+  
+    // Reset search bar input
+    if (searchRef.current) {
+      searchRef.current.clear();
+    }
+  
+    // Reset destination in Redux
+    dispatch(setDestination(null));
+
+  };
+
+  function handleTransportSelection(arg0: string): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
           <GooglePlacesAutocomplete
+            ref={searchRef}
             placeholder="Where do you want to go?"
             fetchDetails={true}
             nearbyPlacesAPI="GooglePlacesSearch"
@@ -134,6 +152,7 @@ export default function TabOneScreen() {
                   location: details.geometry.location,
                   description: data.description,
                 }))
+                setTransportModalVisible(true);  
             }}
             query={{
               key: GOOGLE_MAPS_PLACES_LEGACY,
@@ -183,7 +202,7 @@ export default function TabOneScreen() {
                 destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor='black'
+                strokeColor='#0384fc'
               />
             )}
             {destination?.location && userLocation && (
@@ -208,6 +227,7 @@ export default function TabOneScreen() {
               />
             )}
           </MapView>
+          
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
@@ -244,6 +264,30 @@ export default function TabOneScreen() {
               </View>
             </View>
           </Modal>
+
+          {/* Transport Selection Modal */}
+          <Modal animationType="slide" transparent={true} visible={transportModalVisible} onRequestClose={() => setTransportModalVisible(false)}>
+            <View style={styles.modalContainer}>
+              <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
+                <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
+                  Select Your Mode of Transport
+                </Text>
+                
+                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Bus")}>
+                  <Text style={styles.optionText}>🚌 Bus</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Car")}>
+                  <Text style={styles.optionText}>🚗 Car</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
+                  <Text style={styles.cancelText}>❌ Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
         </>
       ) : (
         <Text style={styles.permissionText}>Location Permission Required. Please allow location access to view the map.</Text>
@@ -273,6 +317,31 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingLeft: 25,
     backgroundColor: "white",
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "white",
+  },
+  cancelButton: {
+    backgroundColor: "#ff4d4d",
+    padding: 15,
+    width: "90%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  optionButton: {
+    backgroundColor: "#eee",
+    padding: 15,
+    width: "90%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 5,
   },
   searchInputDark: {
     backgroundColor: "black",
@@ -305,12 +374,13 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    alignItems: "center"
   },
   modalTitle: {
     fontSize: 18,
@@ -325,7 +395,18 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center"
   },
-  hazardText: { fontSize: 16 },
-  closeButton: { marginTop: 10, padding: 10, backgroundColor: "#ff4d4d", borderRadius: 10, alignItems: "center" },
-  closeButtonText: { color: "white", fontWeight: "bold" },
+  hazardText: { 
+    fontSize: 16 
+  },
+  closeButton: { 
+    marginTop: 10, 
+    padding: 10, 
+    backgroundColor: "#ff4d4d", 
+    borderRadius: 10, 
+    alignItems: "center" 
+  },
+  closeButtonText: { 
+    color: "white",
+    fontWeight: "bold" 
+  },
 });
