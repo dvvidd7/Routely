@@ -59,11 +59,11 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
-  useEffect(() => {
-    if (destination) {
-      handleAutocompletePress();
-    }
-  }, [destination]);
+  // useEffect(() => {
+  //   if (destination) {
+  //     handleAutocompletePress();
+  //   }
+  // }, [destination]);
 
   useEffect(()=>{
     if(!destination) return;
@@ -86,6 +86,7 @@ export default function TabOneScreen() {
             longitudeDelta: 0.0421,
           },
           1000
+
         );
       }
     } catch (error) {
@@ -97,8 +98,10 @@ export default function TabOneScreen() {
       mapRef.current.animateToRegion({
         latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
         longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
+        //latitudeDelta: 0.0922,
+        //longitudeDelta: 0.0421,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
       }, 1000);
     }
   };
@@ -160,8 +163,10 @@ export default function TabOneScreen() {
             region={{
               latitude: userLocation?.latitude || INITIAL_REGION.latitude,
               longitude: userLocation?.longitude || INITIAL_REGION.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
+              // latitudeDelta: 0.0922,
+              // longitudeDelta: 0.0421,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
             }}
           >
             {destination && userLocation?.latitude && userLocation?.longitude && (
