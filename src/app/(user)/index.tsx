@@ -7,7 +7,7 @@ import { useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
 import { useDispatch, useSelector } from "react-redux";
 import { setDestination, selectDestination } from "@/slices/navSlice";
-import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
+import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
@@ -40,6 +40,7 @@ export default function TabOneScreen() {
   const [transportModalVisible, setTransportModalVisible] = useState(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
+  const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
 
@@ -116,11 +117,29 @@ export default function TabOneScreen() {
     setModalVisible(false);
   };
 
+  const handleCancelTransportSelection = () => {
+    setTransportModalVisible(false);
+  
+    // Reset search bar input
+    if (searchRef.current) {
+      searchRef.current.clear();
+    }
+  
+    // Reset destination in Redux
+    dispatch(setDestination(null));
+
+  };
+
+  function handleTransportSelection(arg0: string): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
           <GooglePlacesAutocomplete
+            ref={searchRef}
             placeholder="Where do you want to go?"
             fetchDetails={true}
             nearbyPlacesAPI="GooglePlacesSearch"
@@ -260,7 +279,7 @@ export default function TabOneScreen() {
                   <Text style={styles.optionText}>🚗 Car</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.cancelButton} onPress={() => setTransportModalVisible(false)}>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
                   <Text style={styles.cancelText}>❌ Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -353,12 +372,13 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    alignItems: "center"
   },
   modalTitle: {
     fontSize: 18,
@@ -373,7 +393,18 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center"
   },
-  hazardText: { fontSize: 16 },
-  closeButton: { marginTop: 10, padding: 10, backgroundColor: "#ff4d4d", borderRadius: 10, alignItems: "center" },
-  closeButtonText: { color: "white", fontWeight: "bold" },
+  hazardText: { 
+    fontSize: 16 
+  },
+  closeButton: { 
+    marginTop: 10, 
+    padding: 10, 
+    backgroundColor: "#ff4d4d", 
+    borderRadius: 10, 
+    alignItems: "center" 
+  },
+  closeButtonText: { 
+    color: "white",
+    fontWeight: "bold" 
+  },
 });
