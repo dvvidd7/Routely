@@ -2,7 +2,7 @@ import axios from "axios";
 
 const UBER_SERVER_TOKEN = "your_uber_server_token"; // Get from Uber Developer Dashboard
 
-export const getUberRideEstimate = async (start, end) => {
+export const getUberRideEstimate = async (start: { lat: any; lng: any; }, end: { lat: any; lng: any; }) => {
   const url = `https://api.uber.com/v1.2/estimates/price?start_latitude=${start.lat}&start_longitude=${start.lng}&end_latitude=${end.lat}&end_longitude=${end.lng}`;
 
   try {
