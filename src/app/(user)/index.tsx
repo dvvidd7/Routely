@@ -46,6 +46,11 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
+  useEffect(() => {
+    if (destination) {
+      handleAutocompletePress();
+    }
+  }, [destination]);
 
   const handleMyLocationPress = async () => {
     const location = await Location.getCurrentPositionAsync();
@@ -85,7 +90,7 @@ export default function TabOneScreen() {
                   location: details?.geometry.location,
                   description: data.description,
                 }))
-                handleAutocompletePress();
+                //handleAutocompletePress();
                 console.log(destination);
               }}
               query={{
