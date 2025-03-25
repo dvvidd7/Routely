@@ -157,6 +157,10 @@ export default function TabOneScreen() {
             query={{
               key: GOOGLE_MAPS_PLACES_LEGACY,
               language: 'en',
+              location: userLocation
+              ? `${userLocation.latitude},${userLocation.longitude}`
+              : undefined,
+            radius: 20000, // meters
             }}
             onFail={error => console.error(error)}
             styles={{
@@ -247,26 +251,20 @@ export default function TabOneScreen() {
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
                 <Text style={styles.modalTitle}>Select a Hazard</Text>
-                <FlatList
-                  data={hazards}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.hazardButtonOptions} onPress={() => handleSelectHazard(item)}>
-                      <Text style={styles.hazardText}>
-                        {item.icon} {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                />
-                <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-                  <Text style={styles.closeButtonText}>Cancel</Text>
+                {hazards.map((hazard) => (
+                  <TouchableOpacity key={hazard.id} style={styles.optionButton} onPress={() => handleSelectHazard(hazard)}>
+                    <Text style={styles.optionText}>{hazard.icon} {hazard.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </Modal>
 
           {/* Transport Selection Modal */}
-          <Modal animationType="slide" transparent={true} visible={transportModalVisible} onRequestClose={() => setTransportModalVisible(false)}>
+          <Modal animationType='slide' transparent={true} visible={transportModalVisible} onRequestClose={() => setTransportModalVisible(false)}>
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
                 <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
@@ -343,6 +341,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 5,
   },
+  hazardButton: {
+    backgroundColor: "#eee",
+    padding: 15,
+    width: "90%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 5,
+  },
   searchInputDark: {
     backgroundColor: "black",
     color: "white",
@@ -393,7 +399,8 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     backgroundColor: "#ddd",
     borderRadius: 15,
-    alignItems: "center"
+    alignItems: "center",
+    height:60,
   },
   hazardText: { 
     fontSize: 16 
