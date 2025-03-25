@@ -9,6 +9,8 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { GOOGLE_MAPS_PLACES_LEGACY } from '@env';
 import { mapDark } from '@/constants/darkMap';
 import { ScrollView } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { setOrigin, setDestination, selectDestination } from '@/slices/navSlice';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -17,13 +19,15 @@ const INITIAL_REGION = {
   longitudeDelta: 1,
 };
 
+
 export default function TabOneScreen() {
   const { dark } = useTheme();
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
-
+  const dispatch = useDispatch();
+  const destination = useSelector(selectDestination);
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -55,6 +59,17 @@ export default function TabOneScreen() {
       }, 1000);
     }
   };
+  const handleAutocompletePress = async () => {
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: destination.location.lat,
+        longitude: destination.location.lng,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }, 1000);
+    }
+  };
+  
 
   return (
     <View style={styles.container}>
@@ -62,11 +77,16 @@ export default function TabOneScreen() {
         <>
           {/* <View style={{ flex: 1, height: '100%', alignItems:'center', zIndex:5 }} > */}
             <GooglePlacesAutocomplete
-              placeholder='Search'
+              placeholder='Where do you want to go?'
               fetchDetails={true}
+              nearbyPlacesAPI='GooglePlacesSearch'
               onPress={(data, details = null) => {
-                console.log("Selected Location:", details);
-                console.log(data, details);
+                dispatch(setDestination({
+                  location: details?.geometry.location,
+                  description: data.description,
+                }))
+                handleAutocompletePress();
+                console.log(destination);
               }}
               query={{
                 key: GOOGLE_MAPS_PLACES_LEGACY,
@@ -86,6 +106,7 @@ export default function TabOneScreen() {
                 onBlur: () => setIsFocused(false),
                 placeholderTextColor: dark ? 'white' : 'black',
               }}
+              debounce={300}
             />
           {/* </View> */}
           <MapView

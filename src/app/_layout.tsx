@@ -8,6 +8,8 @@ import 'react-native-reanimated';
 import AuthProvider from '@/providers/AuthProvider';
 import QueryProvider from '@/providers/QueryProvider';
 import { useColorScheme } from '../components/useColorScheme';
+import { Provider } from 'react-redux';
+import { store } from './store';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -60,18 +62,20 @@ function RootLayoutNav() {
   };
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
-       <AuthProvider>
-        <QueryProvider>
-        <Stack>
-          <Stack.Screen name="(user)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-        </QueryProvider>
-       </AuthProvider>
-      </ThemeProvider>
-    </ThemeContext.Provider>
+    <Provider store={store}>
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
+        <AuthProvider>
+          <QueryProvider>
+          <Stack>
+            <Stack.Screen name="(user)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+          </QueryProvider>
+        </AuthProvider>
+        </ThemeProvider>
+      </ThemeContext.Provider>
+    </Provider>
   );
 }
