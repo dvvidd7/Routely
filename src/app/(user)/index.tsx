@@ -116,6 +116,7 @@ export default function TabOneScreen() {
               placeholderTextColor: dark ? "white" : "black",
             }}
             debounce={300}
+            enablePoweredByContainer={false} // Disable the "Powered by Google" container
           />
 
           <MapView
@@ -147,7 +148,7 @@ export default function TabOneScreen() {
           {/* Hazard Selection Modal */}
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
             <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
+              <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
                 <Text style={styles.modalTitle}>Select a Hazard</Text>
                 <FlatList
                   data={hazards}
@@ -227,7 +228,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    backgroundColor: "white",
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
