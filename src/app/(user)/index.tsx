@@ -62,8 +62,8 @@ export default function TabOneScreen() {
   const handleAutocompletePress = async () => {
     if (mapRef.current) {
       mapRef.current.animateToRegion({
-        latitude: destination.location.lat,
-        longitude: destination.location.lng,
+        latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
+        longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       }, 1000);
@@ -89,7 +89,7 @@ export default function TabOneScreen() {
                 console.log(destination);
               }}
               query={{
-                key: GOOGLE_MAPS_PLACES_LEGACY,
+                key: 'AIzaSyDe5nUC7KKAhkysUfBB9ofQ2FKRM9rE_Qc',
                 language: 'en',
               }}
               onFail={error => console.error(error)}
