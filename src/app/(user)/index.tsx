@@ -37,6 +37,7 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [transportModalVisible, setTransportModalVisible] = useState(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
   const dispatch = useDispatch();
@@ -92,6 +93,12 @@ export default function TabOneScreen() {
       Alert.alert("Error", "Could not get current location.");
     }
   };
+
+  const handleTransportSelection = (mode: string) => {
+    Alert.alert("Transport Mode Selected", `You chose: ${mode}`);
+    setTransportModalVisible(false);
+  };
+
   const handleAutocompletePress = async () => {
     if (mapRef.current) {
       mapRef.current.animateToRegion({
@@ -127,6 +134,7 @@ export default function TabOneScreen() {
                   location: details.geometry.location,
                   description: data.description,
                 }))
+                setTransportModalVisible(true);  
             }}
             query={{
               key: GOOGLE_MAPS_PLACES_LEGACY,
@@ -174,7 +182,7 @@ export default function TabOneScreen() {
                 destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor='black'
+                strokeColor='#0384fc'
               />
             )}
             {destination?.location && userLocation && (
@@ -199,6 +207,7 @@ export default function TabOneScreen() {
               />
             )}
           </MapView>
+          
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
@@ -235,6 +244,30 @@ export default function TabOneScreen() {
               </View>
             </View>
           </Modal>
+
+          {/* Transport Selection Modal */}
+          <Modal animationType="slide" transparent={true} visible={transportModalVisible} onRequestClose={() => setTransportModalVisible(false)}>
+            <View style={styles.modalContainer}>
+              <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
+                <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
+                  Select Your Mode of Transport
+                </Text>
+                
+                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Bus")}>
+                  <Text style={styles.optionText}>🚌 Bus</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Car")}>
+                  <Text style={styles.optionText}>🚗 Car</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setTransportModalVisible(false)}>
+                  <Text style={styles.cancelText}>❌ Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
         </>
       ) : (
         <Text style={styles.permissionText}>Location Permission Required. Please allow location access to view the map.</Text>
@@ -264,6 +297,31 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingLeft: 25,
     backgroundColor: "white",
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "white",
+  },
+  cancelButton: {
+    backgroundColor: "#ff4d4d",
+    padding: 15,
+    width: "90%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  optionButton: {
+    backgroundColor: "#eee",
+    padding: 15,
+    width: "90%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 5,
   },
   searchInputDark: {
     backgroundColor: "black",
