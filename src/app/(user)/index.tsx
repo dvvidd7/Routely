@@ -129,7 +129,7 @@ export default function TabOneScreen() {
                 }))
               }}
               query={{
-                key: 'AIzaSyDe5nUC7KKAhkysUfBB9ofQ2FKRM9rE_Qc',
+                key: GOOGLE_MAPS_PLACES_LEGACY,
                 language: 'en',
               }}
               onFail={error => console.error(error)}
@@ -209,7 +209,7 @@ export default function TabOneScreen() {
           {/* Hazard Selection Modal */}
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
             <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
+              <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
                 <Text style={styles.modalTitle}>Select a Hazard</Text>
                 <FlatList
                   data={hazards}
@@ -293,7 +293,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    backgroundColor: "white",
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
