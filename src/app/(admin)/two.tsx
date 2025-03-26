@@ -118,6 +118,11 @@ export default function TabTwoScreen() {
       <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
         Account
       </Text>
+
+      <Text style={styles.adminText}>
+        Admin
+      </Text>
+
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
@@ -205,6 +210,13 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginTop: 60,
     fontFamily: 'GaleySemiBold',
+  },
+  adminText: {
+    fontSize: 30,
+    textAlign: 'center',
+    marginTop: 120,
+    fontFamily: 'GaleySemiBold',
+    color:'gray'
   },
   middleContainer: {
     flex: 1,
@@ -329,6 +341,6 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontWeight: 'bold', 
     textAlign: 'center',
-    marginBottom: 40, 
+    marginBottom: 130, 
   },
 });

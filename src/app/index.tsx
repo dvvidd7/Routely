@@ -24,6 +24,9 @@ const index = () => {
       <Link href={'/(user)'} asChild>
         <Button text="User" />
       </Link>
+      <Link href={'/(admin)'} asChild>
+        <Button text="Admin" />
+      </Link>
       <Link href={'/sign-in'} asChild>
         <Button text="Sign In" />
       </Link>

@@ -19,6 +19,7 @@ const TabBarButton: React.FC<TabBarButtonProps> = ({ onPress, onLongPress, isFoc
   const icon: Record<string, (props: any) => JSX.Element> = {
     index: (props) => <Feather name="home" size={24} {...props} />,
     two: (props) => <Feather name="user" size={24} {...props} />,
+    panel: (props) => <Feather name="menu" size={24} {...props} />,
   };
 
   const IconComponent = icon[routeName]; // Destructure to avoid repeated lookup
