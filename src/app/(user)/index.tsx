@@ -12,7 +12,6 @@ import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { getUberRideEstimate } from '@/lib/getUberPrices';
-import { supabase } from '@/lib/supabase';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -141,14 +140,7 @@ export default function TabOneScreen() {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
     }, 200);
-    const destinationCoords = {
-      lat: destination.location.lat,
-      lng: destination.location.lng,
-    };
-    console.log("Price: ", getUberRideEstimate(
-      { lat: userLocation?.latitude, lng: userLocation?.longitude },
-      destinationCoords
-    ));
+    console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
   }, [destination])
 
   const handleMyLocationPress = async () => {
