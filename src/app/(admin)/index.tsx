@@ -11,7 +11,6 @@ import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-nat
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
-import { getUberRideEstimate } from '@/lib/getUberPrices';
 import { supabase } from '@/lib/supabase';
 
 const INITIAL_REGION = {
@@ -521,3 +520,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold" 
   },
 });
+function getUberRideEstimate(arg0: { lat: number; lng: number; }, destinationCoords: { lat: number; lng: number; }): any {
+  throw new Error('Function not implemented.');
+}
+
