@@ -34,6 +34,8 @@ export default function SignIn() {
 
     if (error) Alert.alert(error.message);
     setLoading(false);
+    
+    router.navigate('/sign-in');
     resetFields();
   }
 
