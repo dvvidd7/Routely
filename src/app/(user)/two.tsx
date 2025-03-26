@@ -77,6 +77,10 @@ export default function TabTwoScreen() {
   const handlePencilPress = () => {
     setIsEditing(!isEditing);
   };
+  const handleCancel = () => {
+    setNewUsername('');
+    setIsEditing(false);
+  }
 
   const renderItem = (item: { label: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; value: null; }) => {
     return (
@@ -124,6 +128,9 @@ export default function TabTwoScreen() {
             />
             <Pressable style={styles.button} onPress={handlePress}>
               <Text style={styles.buttonText}>Change Name</Text>
+            </Pressable>
+            <Pressable style={styles.buttonCancel} onPress={handleCancel}>
+              <Text style={styles.buttonText}>Cancel</Text>
             </Pressable>
           </>
         )}
@@ -222,12 +229,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#0384fc',
     padding: 13,
     borderRadius: 30,
+    marginBottom: 50,
+  },
+  buttonCancel: {
+    backgroundColor: 'red',
+    padding: 13,
+    borderRadius: 30,
     marginBottom: 190,
   },
   buttonText: {
     color: 'white',
     fontSize: 15,
   },
+  
   email: {
     fontSize: 20,
     textAlign: 'center',
