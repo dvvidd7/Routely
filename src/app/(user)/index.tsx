@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal } from 'react-native';
+import { StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal, TextInput, Pressable, ScrollView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
@@ -61,11 +61,6 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
-  // useEffect(() => {
-  //   if (destination) {
-  //     handleAutocompletePress();
-  //   }
-  // }, [destination]);
 
   useEffect(() => {
     if (!destination || !userLocation) return;
@@ -136,6 +131,10 @@ export default function TabOneScreen() {
     dispatch(setDestination(null));
   };
 
+  const handleSearchPress = () => {
+    setIsFocused(true);
+  };
+  
   function handleTransportSelection(arg0: string): void {
     throw new Error('Function not implemented.');
   }
@@ -144,7 +143,7 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          <GooglePlacesAutocomplete
+          {/* <GooglePlacesAutocomplete
             ref={searchRef}
             placeholder="Where do you want to go?"
             fetchDetails={true}
@@ -182,8 +181,8 @@ export default function TabOneScreen() {
             }}
             debounce={300}
             enablePoweredByContainer={false}
-          />
-          {/* </View> */}
+          /> */}
+
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -238,10 +237,21 @@ export default function TabOneScreen() {
             )}
           </MapView>
           
+          {/* SEARCH BUTTON */}
+        <View style={{...styles.inputContainer, backgroundColor: dark ? 'black' : 'white'}}>
+            <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+            <Pressable onPress={()=> setIsFocused(true)}>
+              <TextInput editable={false} cursorColor={dark ? 'white' : 'black'}  style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />      
+            </Pressable>
+        </View>
+
+
+            {/* HAZARD BUTTON */}
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
+            {/* MY LOCATION BUTTON */}
           <TouchableOpacity
             style={[
               styles.HazardButton,
@@ -251,6 +261,55 @@ export default function TabOneScreen() {
           >
             <Feather name="alert-triangle" size={24} color="#eed202"/>
           </TouchableOpacity>
+
+
+          {/* Autocomplete Modal */}
+          <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
+            <View>
+            {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
+              <GooglePlacesAutocomplete
+              ref={searchRef}
+              placeholder="Where do you want to go?"
+              fetchDetails={true}
+              nearbyPlacesAPI="GooglePlacesSearch"
+              onPress={(data, details = null) => {
+                if (!details || !details.geometry) return;
+                dispatch(
+                  setDestination({
+                    location: details.geometry.location,
+                    description: data.description,
+                  }))
+                  setTransportModalVisible(true);  
+              }}
+              query={{
+                key: GOOGLE_MAPS_PLACES_LEGACY,
+                language: 'en',
+                location: userLocation
+                ? `${userLocation.latitude},${userLocation.longitude}`
+                : undefined,
+              radius: 20000, // meters
+              }}
+              onFail={error => console.error(error)}
+              styles={{
+                container: styles.topSearch,
+                textInput: [
+                  //styles.textInput,
+                  isFocused && styles.searchInputFocused,
+                  dark && styles.searchInputDark
+                ],
+              }}
+              textInputProps={{
+                autoFocus: true,
+                onFocus: () => setIsFocused(true),
+                onBlur: () => setIsFocused(false),
+                placeholderTextColor: dark ? 'white' : 'black',
+              }}
+              debounce={300}
+              enablePoweredByContainer={false}
+            />
+            </View>
+          </Modal>
+
 
           {/* Hazard Selection Modal */}
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
@@ -304,24 +363,47 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   topSearch: {
     position: "absolute",
-    top: 30,
+    top: 20,
     width: "85%",
     zIndex: 5,
-    marginTop: 60,
-    alignSelf: "center"
+    alignSelf: "center",
   },
   searchInputFocused: {
     borderWidth: 2,
     borderColor: '#0384fc',
+    height: 60,
+    borderRadius: 20,
+    paddingLeft: 25,
+    backgroundColor: "white",
+
+    width: '100%',
   },
   searchInput: {
     borderWidth: 2,
     borderColor: "gray",
-    height: 50,
+    height: 60,
     borderRadius: 25,
     paddingLeft: 25,
     backgroundColor: "white",
   },
+  inputContainer:{
+    position: "absolute",
+    flexDirection: 'row',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginVertical: 20,
+    alignItems: 'center',
+    height: 60,
+    width: '90%',
+    zIndex: 5,
+},
+inputIcon: {
+    marginLeft:15,
+    marginRight: 10,
+},
+textInput:{
+    flex: 1,
+},
   cancelText: {
     fontSize: 16,
     fontWeight: "bold",
