@@ -76,7 +76,7 @@ export default function TabOneScreen() {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
     }, 200);
-    console.log("Price: ", getUberRideEstimate({lat: userLocation?.latitude, lng: userLocation?.longitude}, {lat: destination.location.lat, lng: destination.location.lng}));
+    //console.log("Price: ", getUberRideEstimate({lat: userLocation?.latitude, lng: userLocation?.longitude}, {lat: destination.location.lat, lng: destination.location.lng}));
   }, [destination])
 
   const handleMyLocationPress = async () => {

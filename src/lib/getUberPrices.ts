@@ -1,20 +1,22 @@
-import axios from "axios";
+var request = require('request');
 
-const UBER_SERVER_TOKEN = "your_uber_server_token"; // Get from Uber Developer Dashboard
-
-export const getUberRideEstimate = async (start, end) => {
-  const url = `https://api.uber.com/v1.2/estimates/price?start_latitude=${start.lat}&start_longitude=${start.lng}&end_latitude=${end.lat}&end_longitude=${end.lng}`;
-
-  try {
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${UBER_SERVER_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    return response.data.prices; // Returns an array of Uber ride types & estimates
-  } catch (error) {
-    console.error("Error fetching Uber ride estimate:", error);
-  }
+// Set the API endpoint and request options
+var options = {
+  method: 'POST',
+  url: 'https://auth.uber.com/oauth/v2/token',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  form: {
+    client_id: '<CLIENT_ID>', // Replace with your actual Client ID
+    client_secret: '<CLIENT_SECRET>', // Replace with your actual Client Secret
+    grant_type: 'client_credentials',
+    scope: 'eats.deliveries', // The scope of access required
+  },
 };
+
+// Send the request to Authorization API
+request(options, function (error: string, response: { body: any; }) {
+  if (error) throw new Error(error);
+  console.log(response.body); // Print the response body containing the access token
+});
