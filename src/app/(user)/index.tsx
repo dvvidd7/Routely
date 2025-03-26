@@ -11,7 +11,7 @@ import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-nat
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
-import { getUberRideEstimate } from '@/lib/getUberPrices';
+// import { getUberRideEstimate } from '@/lib/getUberPrices';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -69,8 +69,8 @@ export default function TabOneScreen() {
   // }, [destination]);
 
   useEffect(() => {
-    if (!destination) return;
-
+    if (!destination || !userLocation) return;
+  
     setTimeout(() => {
       mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -88,8 +88,8 @@ export default function TabOneScreen() {
           {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
+            latitudeDelta: 0.5,
+            longitudeDelta: 0.5,
           },
           1000
 
@@ -129,7 +129,6 @@ export default function TabOneScreen() {
   
     // Reset destination in Redux
     dispatch(setDestination(null));
-
   };
 
   function handleTransportSelection(arg0: string): void {
@@ -218,6 +217,7 @@ export default function TabOneScreen() {
                 title='Destination'
                 description={destination.description}
                 identifier='destination'
+                pinColor='blue'
               />
             )}
             {userLocation && destination && (
@@ -228,6 +228,7 @@ export default function TabOneScreen() {
                 }}
                 title='Origin'
                 identifier='origin'
+                pinColor='blue'
               />
             )}
           </MapView>
@@ -275,8 +276,8 @@ export default function TabOneScreen() {
                   <Text style={styles.optionText}>🚌 Bus</Text>
                 </TouchableOpacity>
                 
-                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Car")}>
-                  <Text style={styles.optionText}>🚗 Car</Text>
+                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Uber")}>
+                  <Text style={styles.optionText}>🚗 Uber</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0)",
   },
   modalContent: {
     padding: 20,
