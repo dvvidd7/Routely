@@ -140,7 +140,7 @@ export default function TabOneScreen() {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
     }, 200);
-    console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
+    //console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
   }, [destination])
 
   const handleMyLocationPress = async () => {
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   topSearch: {
     position: "absolute",
-    top: 20,
+    top: 60,
     width: "85%",
     zIndex: 5,
     alignSelf: "center",
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 20,
     marginHorizontal: 20,
-    marginVertical: 20,
+    marginVertical: 60,
     alignItems: 'center',
     height: 60,
     width: '90%',
