@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal, TextInput, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
@@ -45,22 +45,24 @@ export default function TabOneScreen() {
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
-  const [hazardMarkers, setHazardMarkers] = useState<{ id: number; latitude: number; longitude: number; label: string; icon: string }[]>([]);
+  const [hazardMarkers, setHazardMarkers] = useState<{
+    created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
+  }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const {mutate: useNewSearch, error} = useCreateSearch();
+  const { mutate: useNewSearch, error } = useCreateSearch();
 
   useEffect(() => {
-  const fetchUserEmail = async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Error fetching user session:", error);
-      return;
-    }
-    setUserEmail(session?.user?.email || null);
-  };
+    const fetchUserEmail = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Error fetching user session:", error);
+        return;
+      }
+      setUserEmail(session?.user?.email || null);
+    };
 
-  fetchUserEmail();
-}, []);
+    fetchUserEmail();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -87,15 +89,22 @@ export default function TabOneScreen() {
   useEffect(() => {
     const fetchHazards = async () => {
       const { data, error } = await supabase.from("hazards").select("*");
-  
+
       if (error) {
         console.error("Error fetching hazards:", error);
         return;
       }
-  
-      setHazardMarkers(data || []);
+
+      // Filter out hazards older than 24 hours
+      const now = new Date();
+      const filteredHazards = (data || []).filter((hazard) => {
+        const hazardTime = new Date(hazard.created_at);
+        return now.getTime() - hazardTime.getTime() <= 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      });
+
+      setHazardMarkers(filteredHazards);
     };
-  
+
     fetchHazards();
   }, []);
 
@@ -107,19 +116,21 @@ export default function TabOneScreen() {
         { event: '*', schema: 'public', table: 'hazards' },
         (payload) => {
           console.log('Change received!', payload);
-  
+
+          const now = new Date();
+
           if (payload.eventType === 'INSERT') {
-            // Add the new hazard to the state
-            setHazardMarkers((prev) => [...prev, payload.new as { id: number; latitude: number; longitude: number; label: string; icon: string }]);
+            const hazardTime = new Date(payload.new.created_at);
+            if (now.getTime() - hazardTime.getTime() <= 24 * 60 * 60 * 1000) {
+              setHazardMarkers((prev) => [...prev, payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string }]);
+            }
           } else if (payload.eventType === 'UPDATE') {
-            // Update the existing hazard in the state
             setHazardMarkers((prev) =>
               prev.map((hazard) =>
-                hazard.id === payload.new.id ? payload.new as { id: number; latitude: number; longitude: number; label: string; icon: string } : hazard
+                hazard.id === payload.new.id ? payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string } : hazard
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            // Remove the deleted hazard from the state
             setHazardMarkers((prev) =>
               prev.filter((hazard) => hazard.id !== payload.old.id)
             );
@@ -127,16 +138,16 @@ export default function TabOneScreen() {
         }
       )
       .subscribe();
-  
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
-  
+
 
   useEffect(() => {
     if (!destination || !userLocation) return;
-  
+
     setTimeout(() => {
       mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -185,7 +196,7 @@ export default function TabOneScreen() {
       Alert.alert("Error", "Location not available!");
       return;
     }
-  
+
     if (!userEmail) {
       Alert.alert("Error", "You must be logged in to report a hazard.");
       return;
@@ -197,18 +208,19 @@ export default function TabOneScreen() {
       label: hazard.label,
       icon: hazard.icon,
       email: userEmail, // Include the user's email
+      created_at: new Date().toISOString(), // Add a timestamp
     };
-  
+
     try {
       // Save to Supabase
       const { data, error } = await supabase.from("hazards").insert([newHazard]);
-  
+
       if (error) {
         console.error("Error saving hazard:", error);
         Alert.alert("Error", "Could not save hazard.");
         return;
       }
-  
+
       setHazardMarkers((prev) => [...prev, { id: Date.now(), ...newHazard }]);
       Alert.alert("Hazard Reported", `You selected: ${hazard.label}`);
       setModalVisible(false);
@@ -217,16 +229,16 @@ export default function TabOneScreen() {
       Alert.alert("Error", "An unexpected error occurred.");
     }
   };
-  
+
 
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
-  
+
     // Reset search bar input
     if (searchRef.current) {
       searchRef.current.clear();
     }
-  
+
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
@@ -234,8 +246,8 @@ export default function TabOneScreen() {
   const handleSearchPress = () => {
     setIsFocused(true);
   };
-  
-  function handleTransportSelection(arg0: string): void {
+
+  function handleTransportSelection(_arg0: string): void {
     throw new Error('Function not implemented.');
   }
   return (
@@ -342,25 +354,25 @@ export default function TabOneScreen() {
                 key={hazard.id}
                 coordinate={{ latitude: hazard.latitude, longitude: hazard.longitude }}
                 title={hazard.label}
-                description={`Reported at (${hazard.latitude.toFixed(4)}, ${hazard.longitude.toFixed(4)})`}
+                description={`Reported at ${new Date(hazard.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
               >
-                <Text style={{ fontSize: 35 }}>{hazard.icon}</Text>
+                <Text style={{ fontSize: 20 }}>{hazard.icon}</Text>
               </Marker>
             ))}
           </MapView>
           {/* SEARCH BUTTON */}
-        <TouchableOpacity onPress={handleSearchPress} style={{...styles.inputContainer, backgroundColor: dark ? 'black' : 'white'}}>
+          <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
             <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-              <TextInput editable={false} style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />      
-        </TouchableOpacity>
+            <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
+          </TouchableOpacity>
 
-          
+
           {/* MY LOCATION BUTTON */}
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
-            {/* HAZARD BUTTON */}
+          {/* HAZARD BUTTON */}
           <TouchableOpacity
             style={[
               styles.HazardButton,
@@ -368,57 +380,57 @@ export default function TabOneScreen() {
             ]}
             onPress={handleControlPanelButton}
           >
-            <Feather name="alert-triangle" size={24} color="#eed202"/>
+            <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
 
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
             <View>
-            {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
+              {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
               <GooglePlacesAutocomplete
-              ref={searchRef}
-              placeholder="Where do you want to go?"
-              fetchDetails={true}
-              nearbyPlacesAPI="GooglePlacesSearch"
-              onPress={(data, details = null) => {
-                console.log(details?.geometry.location.lat);
-                if (!details || !details.geometry) return;
-                dispatch(
-                  setDestination({
-                    location: details.geometry.location,
-                    description: data.description,
-                  }))
-                  setTransportModalVisible(true);  
+                ref={searchRef}
+                placeholder="Where do you want to go?"
+                fetchDetails={true}
+                nearbyPlacesAPI="GooglePlacesSearch"
+                onPress={(data, details = null) => {
+                  console.log(details?.geometry.location.lat);
+                  if (!details || !details.geometry) return;
+                  dispatch(
+                    setDestination({
+                      location: details.geometry.location,
+                      description: data.description,
+                    }))
+                  setTransportModalVisible(true);
                   //NU MERGE!!!
-                useNewSearch({latitude: details.geometry.location.lat, longitude: details.geometry.location.lng,searchText: details.name});
-              }}
-              query={{
-                key: GOOGLE_MAPS_PLACES_LEGACY,
-                language: 'en',
-                location: userLocation
-                ? `${userLocation.latitude},${userLocation.longitude}`
-                : undefined,
-              radius: 20000, // meters
-              }}
-              onFail={error => console.error(error)}
-              styles={{
-                container: styles.topSearch,
-                textInput: [
-                  //styles.textInput,
-                  isFocused && styles.searchInputFocused,
-                  dark && styles.searchInputDark
-                ],
-              }}
-              textInputProps={{
-                autoFocus: true,
-                onFocus: () => setIsFocused(true),
-                onBlur: () => setIsFocused(false),
-                placeholderTextColor: dark ? 'white' : 'black',
-              }}
-              debounce={300}
-              enablePoweredByContainer={false}
-            />
+                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
+                }}
+                query={{
+                  key: GOOGLE_MAPS_PLACES_LEGACY,
+                  language: 'en',
+                  location: userLocation
+                    ? `${userLocation.latitude},${userLocation.longitude}`
+                    : undefined,
+                  radius: 20000, // meters
+                }}
+                onFail={error => console.error(error)}
+                styles={{
+                  container: styles.topSearch,
+                  textInput: [
+                    //styles.textInput,
+                    isFocused && styles.searchInputFocused,
+                    dark && styles.searchInputDark
+                  ],
+                }}
+                textInputProps={{
+                  autoFocus: true,
+                  onFocus: () => setIsFocused(true),
+                  onBlur: () => setIsFocused(false),
+                  placeholderTextColor: dark ? 'white' : 'black',
+                }}
+                debounce={300}
+                enablePoweredByContainer={false}
+              />
             </View>
           </Modal>
 
@@ -447,11 +459,11 @@ export default function TabOneScreen() {
                 <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
                   Select Your Mode of Transport
                 </Text>
-                
+
                 <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Bus")}>
                   <Text style={styles.optionText}>🚌 Bus</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Uber")}>
                   <Text style={styles.optionText}>🚗 Uber</Text>
                 </TouchableOpacity>
@@ -498,7 +510,7 @@ const styles = StyleSheet.create({
     paddingLeft: 25,
     backgroundColor: "white",
   },
-  inputContainer:{
+  inputContainer: {
     position: "absolute",
     flexDirection: 'row',
     borderRadius: 20,
@@ -508,14 +520,14 @@ const styles = StyleSheet.create({
     height: 60,
     width: '90%',
     zIndex: 10,
-},
-inputIcon: {
-    marginLeft:15,
+  },
+  inputIcon: {
+    marginLeft: 15,
     marginRight: 10,
-},
-textInput:{
+  },
+  textInput: {
     flex: 1,
-},
+  },
   cancelText: {
     fontSize: 16,
     fontWeight: "bold",
@@ -571,7 +583,7 @@ textInput:{
     padding: 20,
     elevation: 10,
     shadowOpacity: 5,
-    shadowOffset:{width: 0, height: 0},
+    shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
   HazardButton: {
@@ -582,7 +594,7 @@ textInput:{
     padding: 20,
     elevation: 10,
     shadowOpacity: 5,
-    shadowOffset:{width: 0, height: 0},
+    shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
   modalContainer: {
@@ -608,20 +620,20 @@ textInput:{
     backgroundColor: "#ddd",
     borderRadius: 15,
     alignItems: "center",
-    height:60,
+    height: 60,
   },
-  hazardText: { 
-    fontSize: 16 
+  hazardText: {
+    fontSize: 16
   },
-  closeButton: { 
-    marginTop: 10, 
-    padding: 10, 
-    backgroundColor: "#ff4d4d", 
-    borderRadius: 10, 
-    alignItems: "center" 
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: "#ff4d4d",
+    borderRadius: 10,
+    alignItems: "center"
   },
-  closeButtonText: { 
+  closeButtonText: {
     color: "white",
-    fontWeight: "bold" 
+    fontWeight: "bold"
   },
 });

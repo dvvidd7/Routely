@@ -7,9 +7,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, dark } = useTheme();
-
+  const isAdmin = state.routes.length === 3; // Check if there are 3 tabs (admin page)
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
-
   const buttonWidth = dimensions.width / state.routes.length;
 
   const onTabbarLayout = (e: LayoutChangeEvent) => {
@@ -30,19 +29,19 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   return (
     <View onLayout={onTabbarLayout} style={[styles.tabbar, { backgroundColor: dark ? '#000' : '#fff' }]}>
       <Animated.View
-        style={[
-          animatedStyle,
-          {
-            position: 'absolute',
-            backgroundColor: '#0384fc',
-            borderRadius: 30,
-            marginHorizontal: 25,
-            height: dimensions.height - 15,
-            width: buttonWidth - 75,
-            left: (buttonWidth - (buttonWidth - 25)) / 2, // Center the indicator
-          },
-        ]}
-      />
+      style={[
+        animatedStyle,
+        {
+          position: 'absolute',
+          backgroundColor: '#0384fc',
+          borderRadius: 30,
+          marginHorizontal: 25,
+          height: dimensions.height - 15,
+          width: buttonWidth * (isAdmin ? 0.6 : 0.5), // Dynamic width based on role
+          left: buttonWidth * (isAdmin ? -0.07 : 0.07), // Dynamic centering
+        },
+      ]}
+    />
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
 
