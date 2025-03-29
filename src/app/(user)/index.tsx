@@ -12,6 +12,7 @@ import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
+import { useCreateSearch } from '@/api/recentSearches';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -46,6 +47,7 @@ export default function TabOneScreen() {
   const destination = useSelector(selectDestination);
   const [hazardMarkers, setHazardMarkers] = useState<{ id: number; latitude: number; longitude: number; label: string; icon: string }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const {mutate: useNewSearch, error} = useCreateSearch();
 
   useEffect(() => {
   const fetchUserEmail = async () => {
@@ -236,7 +238,6 @@ export default function TabOneScreen() {
   function handleTransportSelection(arg0: string): void {
     throw new Error('Function not implemented.');
   }
-
   return (
     <View style={styles.container}>
       {hasPermission ? (
@@ -284,7 +285,6 @@ export default function TabOneScreen() {
             debounce={300}
             enablePoweredByContainer={false}
           /> */}
-
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -348,22 +348,19 @@ export default function TabOneScreen() {
               </Marker>
             ))}
           </MapView>
-          
           {/* SEARCH BUTTON */}
-        <View style={{...styles.inputContainer, backgroundColor: dark ? 'black' : 'white'}}>
+        <TouchableOpacity onPress={handleSearchPress} style={{...styles.inputContainer, backgroundColor: dark ? 'black' : 'white'}}>
             <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-            <Pressable onPress={()=> setIsFocused(true)}>
-              <TextInput editable={false} cursorColor={dark ? 'white' : 'black'}  style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />      
-            </Pressable>
-        </View>
+              <TextInput editable={false} style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />      
+        </TouchableOpacity>
 
-
-            {/* HAZARD BUTTON */}
+          
+          {/* MY LOCATION BUTTON */}
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
-            {/* MY LOCATION BUTTON */}
+            {/* HAZARD BUTTON */}
           <TouchableOpacity
             style={[
               styles.HazardButton,
@@ -385,6 +382,7 @@ export default function TabOneScreen() {
               fetchDetails={true}
               nearbyPlacesAPI="GooglePlacesSearch"
               onPress={(data, details = null) => {
+                console.log(details?.geometry.location.lat);
                 if (!details || !details.geometry) return;
                 dispatch(
                   setDestination({
@@ -392,6 +390,8 @@ export default function TabOneScreen() {
                     description: data.description,
                   }))
                   setTransportModalVisible(true);  
+                  //NU MERGE!!!
+                useNewSearch({latitude: details.geometry.location.lat, longitude: details.geometry.location.lng,searchText: details.name});
               }}
               query={{
                 key: GOOGLE_MAPS_PLACES_LEGACY,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 60,
     width: '90%',
-    zIndex: 5,
+    zIndex: 10,
 },
 inputIcon: {
     marginLeft:15,
@@ -569,6 +569,10 @@ textInput:{
     backgroundColor: "#0384fc",
     borderRadius: 60,
     padding: 20,
+    elevation: 10,
+    shadowOpacity: 5,
+    shadowOffset:{width: 0, height: 0},
+    shadowRadius: 10,
   },
   HazardButton: {
     position: "absolute",
@@ -576,6 +580,10 @@ textInput:{
     left: 35,
     borderRadius: 60,
     padding: 20,
+    elevation: 10,
+    shadowOpacity: 5,
+    shadowOffset:{width: 0, height: 0},
+    shadowRadius: 10,
   },
   modalContainer: {
     flex: 1,
@@ -617,7 +625,3 @@ textInput:{
     fontWeight: "bold" 
   },
 });
-function getUberRideEstimate(arg0: { latitude: number; longitude: number; }, arg1: { latitude: number; longitude: number; }): any {
-  throw new Error('Function not implemented.');
-}
-
