@@ -96,7 +96,7 @@ export default function TabOneScreen() {
 
           if (payload.eventType === 'INSERT') {
             const hazardTime = new Date(payload.new.created_at);
-            if (now.getTime() - hazardTime.getTime() <= 24 * 60 * 60 * 1000) {
+            if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
               setHazardMarkers((prev) => [...prev, payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string }]);
             }
           } else if (payload.eventType === 'UPDATE') {
@@ -185,7 +185,7 @@ export default function TabOneScreen() {
       const now = new Date();
       const filteredHazards = (data || []).filter((hazard) => {
         const hazardTime = new Date(hazard.created_at);
-        return now.getTime() - hazardTime.getTime() <= 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        return now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
       });
 
       setHazardMarkers(filteredHazards);
