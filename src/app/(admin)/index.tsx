@@ -96,7 +96,7 @@ export default function TabOneScreen() {
 
           if (payload.eventType === 'INSERT') {
             const hazardTime = new Date(payload.new.created_at);
-            if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
+            if (now.getTime() - hazardTime.getTime() <= 5 * 60 * 60 * 1000) {
               setHazardMarkers((prev) => [...prev, payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string }]);
             }
           } else if (payload.eventType === 'UPDATE') {
