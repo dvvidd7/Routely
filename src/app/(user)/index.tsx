@@ -13,6 +13,7 @@ import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
 import { useCreateSearch } from '@/api/recentSearches';
+import { FlatList } from 'react-native-reanimated/lib/typescript/Animated';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -383,57 +384,80 @@ export default function TabOneScreen() {
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
 
+        {/* Conditionally Render Search Bar */}
+{!transportModalVisible && (
+  <TouchableOpacity
+    onPress={() => setIsFocused(true)} // Trigger focus when the search bar is pressed
+    style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}
+  >
+    <Feather name="search" size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+    <TextInput
+      editable={true} // Allow the user to interact with the TextInput
+      style={{ ...styles.textInput, color: dark ? 'white' : 'black' }}
+      placeholder="Where do you want to go?"
+      placeholderTextColor={dark ? 'white' : 'black'}
+      onFocus={() => setIsFocused(true)} // Open the autocomplete modal when focused
+      onBlur={() => setIsFocused(false)} // Close the search bar when it loses focus
+    />
+  </TouchableOpacity>
+)}
 
-          {/* Autocomplete Modal */}
-          <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
-            <View>
-              {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
-              <GooglePlacesAutocomplete
-                ref={searchRef}
-                placeholder="Where do you want to go?"
-                fetchDetails={true}
-                nearbyPlacesAPI="GooglePlacesSearch"
-                onPress={(data, details = null) => {
-                  console.log(details?.geometry.location.lat);
-                  if (!details || !details.geometry) return;
-                  dispatch(
-                    setDestination({
-                      location: details.geometry.location,
-                      description: data.description,
-                    }))
-                  setTransportModalVisible(true);
-                  //NU MERGE!!!
-                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
-                }}
-                query={{
-                  key: GOOGLE_MAPS_PLACES_LEGACY,
-                  language: 'en',
-                  location: userLocation
-                    ? `${userLocation.latitude},${userLocation.longitude}`
-                    : undefined,
-                  radius: 20000, // meters
-                }}
-                onFail={error => console.error(error)}
-                styles={{
-                  container: styles.topSearch,
-                  textInput: [
-                    //styles.textInput,
-                    isFocused && styles.searchInputFocused,
-                    dark && styles.searchInputDark
-                  ],
-                }}
-                textInputProps={{
-                  autoFocus: true,
-                  onFocus: () => setIsFocused(true),
-                  onBlur: () => setIsFocused(false),
-                  placeholderTextColor: dark ? 'white' : 'black',
-                }}
-                debounce={300}
-                enablePoweredByContainer={false}
-              />
-            </View>
-          </Modal>
-
+{/* Autocomplete Modal */}
+<Modal
+  animationType="fade"
+  transparent={false}
+  visible={isFocused && !transportModalVisible} // Only show if focused and transport modal is not active
+  onRequestClose={() => setIsFocused(false)}
+>
+  <View>
+    <GooglePlacesAutocomplete
+      ref={searchRef}
+      placeholder="Where do you want to go?"
+      fetchDetails={true}
+      nearbyPlacesAPI="GooglePlacesSearch"
+      onPress={(data, details = null) => {
+        console.log(details?.geometry.location.lat);
+        if (!details || !details.geometry) return;
+        dispatch(
+          setDestination({
+            location: details.geometry.location,
+            description: data.description,
+          })
+        );
+        setTransportModalVisible(true);  // Show transport modal
+        useNewSearch({
+          latitude: details.geometry.location.lat,
+          longitude: details.geometry.location.lng,
+          searchText: details.name,
+        });
+      }}
+      query={{
+        key: GOOGLE_MAPS_PLACES_LEGACY, // Replace with your actual API key
+        language: 'en',
+        location: userLocation
+          ? `${userLocation.latitude},${userLocation.longitude}`
+          : undefined,
+        radius: 20000, // meters
+      }}
+      onFail={(error) => console.error(error)}
+      styles={{
+        container: styles.topSearch,
+        textInput: [
+          isFocused && styles.searchInputFocused,
+          dark && styles.searchInputDark,
+        ],
+      }}
+      textInputProps={{
+        autoFocus: true,
+        onFocus: () => setIsFocused(true),
+        onBlur: () => setIsFocused(false),
+        placeholderTextColor: dark ? 'white' : 'black',
+      }}
+      debounce={300}
+      enablePoweredByContainer={false}
+    />
+  </View>
+</Modal>
 
           {/* Hazard Selection Modal */}
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
@@ -453,27 +477,59 @@ export default function TabOneScreen() {
           </Modal>
 
           {/* Transport Selection Modal */}
-          <Modal animationType='slide' transparent={true} visible={transportModalVisible} onRequestClose={() => setTransportModalVisible(false)}>
-            <View style={styles.modalContainer}>
-              <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
-                <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
-                  Select Your Mode of Transport
-                </Text>
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={transportModalVisible}
+  onRequestClose={() => setTransportModalVisible(false)}
+>
+  <View style={styles.modalContainer}>
+    <View style={[styles.modalContent, { backgroundColor: dark ? 'black' : 'white' }]}>
+      <Text style={[styles.modalTitle, { color: dark ? 'white' : 'black' }]}>
+        Select Your Ride
+      </Text>
 
-                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Bus")}>
-                  <Text style={styles.optionText}>🚌 Bus</Text>
-                </TouchableOpacity>
+      {/* Bus Option */}
+      <TouchableOpacity
+        style={[styles.rideOption, { backgroundColor: dark ? '#1c1c1c' : '#f9f9f9' }]}
+        onPress={() => handleTransportSelection('Bus')}
+      >
+        <View style={styles.rideDetails}>
+          <Text style={[styles.rideIcon, { color: dark ? 'white' : 'black' }]}>🚌</Text>
+          <View>
+            <Text style={[styles.rideTitle, { color: dark ? 'white' : 'black' }]}>Bus</Text>
+            <Text style={[styles.rideSubtitle, { color: dark ? '#ccc' : '#555' }]}>
+              Estimated time: 15 mins
+            </Text>
+          </View>
+        </View>
+        <Text style={[styles.ridePrice, { color: dark ? 'white' : 'black' }]}>3 RON</Text>
+      </TouchableOpacity>
 
-                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Uber")}>
-                  <Text style={styles.optionText}>🚗 Uber</Text>
-                </TouchableOpacity>
+      {/* Uber Option */}
+      <TouchableOpacity
+        style={[styles.rideOption, { backgroundColor: dark ? '#1c1c1c' : '#f9f9f9' }]}
+        onPress={() => handleTransportSelection('Uber')}
+      >
+        <View style={styles.rideDetails}>
+          <Text style={[styles.rideIcon, { color: dark ? 'white' : 'black' }]}>🚗</Text>
+          <View>
+            <Text style={[styles.rideTitle, { color: dark ? 'white' : 'black' }]}>Uber</Text>
+            <Text style={[styles.rideSubtitle, { color: dark ? '#ccc' : '#555' }]}>
+              Estimated time: 8 mins
+            </Text>
+          </View>
+        </View>
+        <Text style={[styles.ridePrice, { color: dark ? 'white' : 'black' }]}>25 RON</Text>
+      </TouchableOpacity>
 
-                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
-                  <Text style={styles.cancelText}>❌ Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+      {/* Cancel Button */}
+      <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
+        <Text style={styles.cancelText}>❌ Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
         </>
       ) : (
@@ -536,13 +592,20 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: "#ff4d4d",
     padding: 15,
-    width: "90%",
+    width: "100%",
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
   },
   optionText: {
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  timeText: {
+    fontSize: 15,
+  },
+  priceText: {
+    fontSize: 15,
     fontWeight: "bold",
   },
   optionButton: {
@@ -603,10 +666,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0)",
   },
   modalContent: {
-    padding: 20,
+    padding: 16,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    alignItems: "center"
   },
   modalTitle: {
     fontSize: 18,
@@ -635,5 +697,37 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: "white",
     fontWeight: "bold"
+  },
+  rideOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 15,
+    marginVertical: 10,
+    borderRadius: 10,
+    elevation: 2, // Adds shadow for Android
+    shadowColor: "#000", // Adds shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  rideDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rideIcon: {
+    fontSize: 30,
+    marginRight: 15,
+  },
+  rideTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  rideSubtitle: {
+    fontSize: 14,
+  },
+  ridePrice: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
