@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { supabase } from "@/lib/supabase";
+import { useRoute, useTheme } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
 export default function Panel({ navigation }: any) {
+  const router = useRouter();
+  const { dark, colors } = useTheme(); // Access the theme
   const [hazards, setHazards] = useState<
     { id: number; label: string; created_at: string; latitude: number; longitude: number; icon: string; email: string }[]
   >([]);
@@ -52,25 +56,24 @@ export default function Panel({ navigation }: any) {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Reported Hazards</Text>
+    <View style={[styles.container, { backgroundColor: dark ? "#0f0f0f" : "white" }]}>
+      <Text style={[styles.title, { color: dark ? colors.text : "black" }]}>Reported Hazards</Text>
       <FlatList
         data={hazards}
         keyExtractor={(item) => item.id.toString()}
+        style={{ flex: 1 }} 
+        contentContainerStyle={{
+          backgroundColor: dark ? "#0f0f0f" : "white",
+          flexGrow: 1, 
+        }}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.row}
-            onPress={() =>
-              navigation.navigate("MapScreen", {
-                latitude: item.latitude,
-                longitude: item.longitude,
-              })
-            }
+            style={[styles.row, { backgroundColor: dark ? "#0f0f0f" : "white" }]}
           >
-            <Text style={styles.cell}>{item.icon}</Text>
-            <Text style={styles.cell}>{item.label}</Text>
-            <Text style={styles.cell}>{new Date(item.created_at).toLocaleString()}</Text>
-            <Text style={styles.cell}>{item.email}</Text>
+            <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.icon}</Text>
+            <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.label}</Text>
+            <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{new Date(item.created_at).toLocaleString()}</Text>
+            <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.email}</Text>
           </TouchableOpacity>
         )}
       />
@@ -82,11 +85,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "white",
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
+    marginTop: 55,
     marginBottom: 10,
     textAlign: "center",
   },

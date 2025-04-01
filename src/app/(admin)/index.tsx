@@ -3,7 +3,7 @@ import { StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal } from
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
-import { useTheme } from '@react-navigation/native';
+import { RouteProp, useRoute, useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
 import { useDispatch, useSelector } from "react-redux";
 import { setDestination, selectDestination } from "@/slices/navSlice";
@@ -34,13 +34,19 @@ const hazards: Hazard[] = [
 ];
 
 export default function TabOneScreen() {
+  type RouteParams = {
+    latitude?: number;
+    longitude?: number;
+  };
+  
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+  const mapRef = useRef<MapView>(null);
   const { dark } = useTheme();
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [transportModalVisible, setTransportModalVisible] = useState(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
-  const mapRef = useRef<MapView>(null);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
@@ -96,7 +102,7 @@ export default function TabOneScreen() {
 
           if (payload.eventType === 'INSERT') {
             const hazardTime = new Date(payload.new.created_at);
-            if (now.getTime() - hazardTime.getTime() <= 5 * 60 * 60 * 1000) {
+            if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
               setHazardMarkers((prev) => [...prev, payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string }]);
             }
           } else if (payload.eventType === 'UPDATE') {
@@ -118,6 +124,8 @@ export default function TabOneScreen() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  
 
   useEffect(() => {
     if (!destination || !userLocation) return;
@@ -249,6 +257,22 @@ export default function TabOneScreen() {
   function handleTransportSelection(arg0: string): void {
     throw new Error('Function not implemented.');
   }
+
+  useEffect(() => {
+    if (route.params?.latitude && route.params?.longitude) {
+      setTimeout(() => {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: route.params.latitude ?? INITIAL_REGION.latitude,
+            longitude: route.params.longitude ?? INITIAL_REGION.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          },
+          1000
+        );
+      }, 500);
+    }
+  }, [route.params]);
 
   return (
     <View style={styles.container}>

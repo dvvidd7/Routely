@@ -17,6 +17,7 @@ const data = [
   { label: 'Both', value: 'both' },
 ];
 
+
 export default function TabTwoScreen() {
   const { dark } = useTheme();
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
@@ -66,6 +67,11 @@ export default function TabTwoScreen() {
       subscription.remove();
     };
   }, []);
+
+  const openEmail = () =>
+    {
+      Linking.openURL("mailto: davidmanciu1881@gmail.com")
+    }
 
   const handlePress = () => {
     if (newUsername.trim()) {
@@ -193,6 +199,11 @@ export default function TabTwoScreen() {
             <View>
               <Pressable onPress={handleLogout} style={styles.logoutButton}>
                  <Text style={styles.logoutText}>Log Out</Text>
+              </Pressable>
+            </View>
+            <View>
+              <Pressable onPress={openEmail} style={styles.feedbackButton}>
+                 <Text style={styles.feedbackText}>Feedback</Text>
               </Pressable>
             </View>
           </View>
@@ -324,7 +335,7 @@ const styles = StyleSheet.create({
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 130,
+    marginBottom: 100,
     alignSelf: 'center',
   },
   switchText: {
@@ -338,11 +349,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center', 
   },
+  feedbackButton: {
+    backgroundColor: 'transparent', 
+    padding: 1,  
+    width: 80,                                ////////////////////////
+    alignItems: 'center',
+    alignSelf: 'center', 
+  },
   logoutText: {
     color: 'red', 
     fontSize: 16, 
     fontWeight: 'bold', 
     textAlign: 'center',
-    marginBottom: 40, 
+    marginBottom: 20, 
+  },
+  feedbackText: {
+    color: '#0384fc', 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    textAlign: 'center',
+    marginTop:10,
+    marginBottom: 64, 
   },
 });
