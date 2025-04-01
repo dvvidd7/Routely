@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Feather } from '@expo/vector-icons';
+import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import 'react-native-get-random-values';
 import { useDispatch, useSelector } from "react-redux";
@@ -13,7 +13,6 @@ import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
 import { useCreateSearch } from '@/api/recentSearches';
-import { FlatList } from 'react-native-reanimated/lib/typescript/Animated';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -46,6 +45,8 @@ export default function TabOneScreen() {
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
+  const {data:searches, error:searchError} = useFetchSearches();
+  const [busStops, setBusStops] = useState([]);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -82,11 +83,7 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
-  // useEffect(() => {
-  //   if (destination) {
-  //     handleAutocompletePress();
-  //   }
-  // }, [destination]);
+
   useEffect(() => {
     const fetchHazards = async () => {
       const { data, error } = await supabase.from("hazards").select("*");
@@ -154,6 +151,30 @@ export default function TabOneScreen() {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
     }, 200);
+      // const fetchBusStops = async () => {      
+        
+      //   //console.log(`${destination.location.lat}, ${destination.location.lng}`);
+      //   try {
+      //     const response = await fetch(
+      //       `https://overpass-api.de/api/interpreter?data=[out:json];node["highway"="bus_stop"](${destination.location.lat},${destination.location.lng},44.12900739999999,28.6252602);out body;`
+      //     );
+      //     const data = await response.json();
+    
+      //     const stops = data.elements.map((node) => ({
+      //       id: node.id,
+      //       latitude: node.lat,
+      //       longitude: node.lon,
+      //       name: node.tags.name || 'Bus Stop',
+      //     }));
+    
+      //     setBusStops(stops);
+      //   } catch (error) {
+      //     console.error('Error fetching bus stops:', error);
+      //   }
+      //   // console.log(busStops);
+      // };
+    
+      // fetchBusStops();
     //console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
   }, [destination])
 
@@ -166,11 +187,10 @@ export default function TabOneScreen() {
           {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
-            latitudeDelta: 0.5,
-            longitudeDelta: 0.5,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
           },
           1000
-
         );
       }
     } catch (error) {
@@ -311,8 +331,8 @@ export default function TabOneScreen() {
               longitude: userLocation?.longitude || INITIAL_REGION.longitude,
               // latitudeDelta: 0.0922,
               // longitudeDelta: 0.0421,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
             }}
           >
             {destination && userLocation?.latitude && userLocation?.longitude && (
@@ -350,6 +370,16 @@ export default function TabOneScreen() {
                 pinColor='blue'
               />
             )}
+            {/* {busStops.map((bs) => (
+              <Marker
+              key={bs.id}
+              coordinate={{ latitude: bs.latitude, longitude: bs.longitude }}
+              title={bs.name}
+              description={`${bs.name}`}
+            >
+              <FontAwesome name='bus' size={10} />
+            </Marker>
+            ))} */}
             {hazardMarkers.map((hazard) => (
               <Marker
                 key={hazard.id}
@@ -402,62 +432,56 @@ export default function TabOneScreen() {
   </TouchableOpacity>
 )}
 
-{/* Autocomplete Modal */}
-<Modal
-  animationType="fade"
-  transparent={false}
-  visible={isFocused && !transportModalVisible} // Only show if focused and transport modal is not active
-  onRequestClose={() => setIsFocused(false)}
->
-  <View>
-    <GooglePlacesAutocomplete
-      ref={searchRef}
-      placeholder="Where do you want to go?"
-      fetchDetails={true}
-      nearbyPlacesAPI="GooglePlacesSearch"
-      onPress={(data, details = null) => {
-        console.log(details?.geometry.location.lat);
-        if (!details || !details.geometry) return;
-        dispatch(
-          setDestination({
-            location: details.geometry.location,
-            description: data.description,
-          })
-        );
-        setTransportModalVisible(true);  // Show transport modal
-        useNewSearch({
-          latitude: details.geometry.location.lat,
-          longitude: details.geometry.location.lng,
-          searchText: details.name,
-        });
-      }}
-      query={{
-        key: GOOGLE_MAPS_PLACES_LEGACY, // Replace with your actual API key
-        language: 'en',
-        location: userLocation
-          ? `${userLocation.latitude},${userLocation.longitude}`
-          : undefined,
-        radius: 20000, // meters
-      }}
-      onFail={(error) => console.error(error)}
-      styles={{
-        container: styles.topSearch,
-        textInput: [
-          isFocused && styles.searchInputFocused,
-          dark && styles.searchInputDark,
-        ],
-      }}
-      textInputProps={{
-        autoFocus: true,
-        onFocus: () => setIsFocused(true),
-        onBlur: () => setIsFocused(false),
-        placeholderTextColor: dark ? 'white' : 'black',
-      }}
-      debounce={300}
-      enablePoweredByContainer={false}
-    />
-  </View>
-</Modal>
+          {/* Autocomplete Modal */}
+          <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
+            <View>
+              {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
+              <GooglePlacesAutocomplete
+                ref={searchRef}
+                placeholder="Where do you want to go?"
+                fetchDetails={true}
+                nearbyPlacesAPI="GooglePlacesSearch"
+                onPress={(data, details = null) => {
+                  console.log(details?.geometry.location.lat);
+                  if (!details || !details.geometry) return;
+                  dispatch(
+                    setDestination({
+                      location: details.geometry.location,
+                      description: data.description,
+                    }))
+                  setTransportModalVisible(true);
+                  //NU MERGE!!!
+                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
+                }}
+                query={{
+                  key: GOOGLE_MAPS_PLACES_LEGACY,
+                  language: 'en',
+                  location: userLocation
+                    ? `${userLocation.latitude},${userLocation.longitude}`
+                    : undefined,
+                  radius: 20000, // meters
+                }}
+                onFail={error => console.error(error)}
+                styles={{
+                  container: styles.topSearch,
+                  textInput: [
+                    //styles.textInput,
+                    isFocused && styles.searchInputFocused,
+                    dark && styles.searchInputDark
+                  ],
+                }}
+                textInputProps={{
+                  autoFocus: true,
+                  onFocus: () => setIsFocused(true),
+                  onBlur: () => setIsFocused(false),
+                  placeholderTextColor: dark ? 'white' : 'black',
+                }}
+                debounce={300}
+                enablePoweredByContainer={false}
+              />
+            </View>
+          </Modal>
+
 
           {/* Hazard Selection Modal */}
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
