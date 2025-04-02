@@ -139,10 +139,6 @@ export default function TabOneScreen() {
       lat: destination.location.lat,
       lng: destination.location.lng,
     };
-    console.log("Price: ", getUberRideEstimate(
-      { lat: userLocation?.latitude, lng: userLocation?.longitude },
-      destinationCoords
-    ));
   }, [destination])
 
   const handleMyLocationPress = async () => {
@@ -571,7 +567,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   },
 });
-function getUberRideEstimate(arg0: { lat: number; lng: number; }, destinationCoords: { lat: number; lng: number; }): any {
-  throw new Error('Function not implemented.');
-}
-
