@@ -8,7 +8,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
-import { useUpdateTransport, useUpdateUser } from '@/api/username';
+import { useGetPoints, useUpdateTransport, useUpdateUser } from '@/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
 
 const data = [
@@ -30,6 +30,7 @@ export default function TabTwoScreen() {
   const {user: dataUsername, profile} = useAuth();
   const {mutate:updateUsername} = useUpdateUser();
   const {mutate:updateTransport} = useUpdateTransport();
+
   //const {data:dataUsername} = useGetUser();
 
   useEffect(() => {

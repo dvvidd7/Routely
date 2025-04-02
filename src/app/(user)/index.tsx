@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList } from 'react-native';
+import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
-import { useCreateSearch, useFetchSearches } from '@/api/recentSearches';
+import { useCreateSearch } from '@/api/recentSearches';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -51,7 +51,7 @@ export default function TabOneScreen() {
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const { mutate: useNewSearch, error } = useCreateSearch();
+  const { mutate: useNewSearch } = useCreateSearch();
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -106,6 +106,27 @@ export default function TabOneScreen() {
     fetchHazards();
   }, []);
 
+  {/* POINTS SYSTEM */}
+
+  const {mutate: updatePoints} = useUpdatePoints();
+  const {data:points, error} = useGetPoints();
+  
+  const queryClient = useQueryClient();
+  useEffect(()=>{
+    const channels = supabase.channel('points-update-channel')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'profiles' },
+      (payload) => {
+        console.log('Change received!', payload);
+        queryClient.invalidateQueries({queryKey: ['points']})
+      }
+    )
+    .subscribe();
+
+    return () => {channels.unsubscribe()}
+  },[]);
+
   useEffect(() => {
     const channel = supabase
       .channel('hazards')
@@ -114,9 +135,8 @@ export default function TabOneScreen() {
         { event: '*', schema: 'public', table: 'hazards' },
         (payload) => {
           console.log('Change received!', payload);
-
+          updatePoints({points: 5});
           const now = new Date();
-
           if (payload.eventType === 'INSERT') {
             const hazardTime = new Date(payload.new.created_at);
             if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
@@ -197,16 +217,6 @@ export default function TabOneScreen() {
       Alert.alert("Error", "Could not get current location.");
     }
   };
-  const handleAutocompletePress = async () => {
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: destination?.location?.lat ?? INITIAL_REGION.latitude,
-        longitude: destination?.location?.lng ?? INITIAL_REGION.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      }, 1000);
-    }
-  };
 
   const handleControlPanelButton = () => {
     setModalVisible(true);
@@ -243,7 +253,7 @@ export default function TabOneScreen() {
       }
 
       setHazardMarkers((prev) => [...prev, { id: Date.now(), ...newHazard }]);
-      Alert.alert("Hazard Reported", `You selected: ${hazard.label}`);
+      Alert.alert("Hazard Reported", `You selected: ${hazard.label}. +5 points!!!`);
       setModalVisible(false);
     } catch (error) {
       console.error("Unexpected error saving hazard:", error);
@@ -479,6 +489,13 @@ export default function TabOneScreen() {
                 debounce={300}
                 enablePoweredByContainer={false}
               />
+              <FlatList
+                data={searches}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({item}) => <RecentSearch searchText={item.searchText} searchRef={searchRef}/>}
+                contentContainerStyle={{gap: 5}}
+                style={{position: "relative",top:180, left: 25}}
+              />
             </View>
           </Modal>
 
@@ -567,7 +584,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   topSearch: {
     position: "absolute",
-    top: 60,
+    top: 90,
     width: "85%",
     zIndex: 5,
     alignSelf: "center",
@@ -595,7 +612,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 20,
     marginHorizontal: 20,
-    marginVertical: 60,
+    marginVertical: 90,
     alignItems: 'center',
     height: 60,
     width: '90%',

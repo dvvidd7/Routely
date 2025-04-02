@@ -1,6 +1,7 @@
-import {useMutation} from '@tanstack/react-query'
+import {useMutation, useQuery} from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/providers/AuthProvider'
+import { Text } from 'react-native';
 export const useUpdateUser = () => {
     const {session} = useAuth();
     return useMutation({
@@ -28,6 +29,35 @@ export const useUpdateTransport = () => {
 
             if(error) throw new Error(error.message);
             return favTrans;
+            
+        },
+    })
+};
+export const useGetPoints = () => {
+    const {session} = useAuth();
+
+    return useQuery({
+        queryKey: ['points'],
+        async queryFn(){
+            const {data, error} = await supabase
+            .from('profiles')
+            .select("points")
+            .eq('id', session?.user.id)
+            .single();
+
+            if(error) throw new Error(error.message);
+
+            return data;
+        }
+    })
+}
+export const useUpdatePoints = () => {
+    const {session} = useAuth();
+    return useMutation({
+        async mutationFn(data: any){
+            const { data:newPoints, error } = await supabase.rpc('increment', {row_id: session?.user.id, x: data.points});
+            if(error) throw new Error(error.message);
+            return newPoints;
             
         },
     })

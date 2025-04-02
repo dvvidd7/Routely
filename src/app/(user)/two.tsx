@@ -1,15 +1,17 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal } from 'react-native';
 import { Text } from '@/components/Themed';
-import { FontAwesome } from '@expo/vector-icons';
+import { Entypo, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
-import { useUpdateTransport, useUpdateUser } from '@/api/username';
+import { useNavigation, useRouter } from 'expo-router';
+import { useGetPoints, useUpdateTransport, useUpdateUser } from '@/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
+import { useQueryClient } from '@tanstack/react-query';
+import LeaderboardUser from '@/components/LeaderboardUser';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -31,8 +33,8 @@ export default function TabTwoScreen() {
   const {user: dataUsername, profile} = useAuth();
   const {mutate:updateUsername} = useUpdateUser();
   const {mutate:updateTransport} = useUpdateTransport();
-  //const {data:dataUsername} = useGetUser();
-
+  const {data:points, error} = useGetPoints();
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -67,6 +69,7 @@ export default function TabTwoScreen() {
       subscription.remove();
     };
   }, []);
+
 
   const openEmail = () =>
     {
@@ -122,12 +125,28 @@ export default function TabTwoScreen() {
       </View>
     );
   };
-
+  const navigation = useNavigation();
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-      <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
-        Account
-      </Text>
+        <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
+          Account
+        </Text>
+          
+      <View style={{ flexDirection: 'row',alignItems: 'center', justifyContent:'space-between'}}>
+        <Pressable style={{...styles.viewLeader, backgroundColor:dark ? '#404040' : '#e6e6e6'}} onPress={()=>setModalVisible(true)}>
+          <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
+          <Text style={{fontSize: 20, marginLeft: 5,fontWeight: '500'}}>View Leaderboard</Text>
+        </Pressable>
+        <View style={{flexDirection: 'row',justifyContent: 'flex-end'}}>
+          <Text style={{fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black'}}>{points?.points}</Text>
+          <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{marginRight: 20}} />
+        </View>
+      </View>
+      <Modal visible={modalVisible} transparent={true}  onRequestClose={()=> setModalVisible(false)} animationType='slide'>
+        <View style={{...styles.modal, backgroundColor: dark ? 'black' : 'white'}}>
+          {LeaderboardUser(username)}
+        </View>
+      </Modal>
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
@@ -218,16 +237,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   text: {
-    fontSize: 50,
+    fontSize: 40,
     margin: 20,
     textAlign: 'left',
-    marginTop: 60,
+    marginTop: 50,
     fontFamily: 'GaleySemiBold',
+    flexDirection: 'row'
   },
   middleContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  viewLeader:{
+    flexDirection: 'row',
+    left: 20,
+    backgroundColor: 'gainsboro',
+    borderRadius: 5,
+    padding: 5,
+  },
+  modal:{
+    flex: 1,
   },
   usernameContainer: {
     flexDirection: 'row',
@@ -238,7 +268,7 @@ const styles = StyleSheet.create({
     marginBottom: 20, // Adjust this value as needed to move the username closer to the TextInput
   },
   username: {
-    fontSize: 50,
+    fontSize: 40,
     textAlign: 'center',
   },
   pencilIcon: {
