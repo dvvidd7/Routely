@@ -12,7 +12,7 @@ import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
-import { useCreateSearch } from '@/api/recentSearches';
+import { useCreateSearch, useFetchSearches } from '@/api/recentSearches';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
