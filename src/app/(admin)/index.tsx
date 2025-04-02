@@ -38,7 +38,7 @@ export default function TabOneScreen() {
     latitude?: number;
     longitude?: number;
   };
-  
+
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const mapRef = useRef<MapView>(null);
   const { dark } = useTheme();
@@ -125,7 +125,7 @@ export default function TabOneScreen() {
     };
   }, []);
 
-  
+
 
   useEffect(() => {
     if (!destination || !userLocation) return;
@@ -414,22 +414,57 @@ export default function TabOneScreen() {
           </Modal>
 
           {/* Transport Selection Modal */}
-          <Modal animationType='slide' transparent={true} visible={transportModalVisible} onRequestClose={() => setTransportModalVisible(false)}>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={transportModalVisible}
+            onRequestClose={() => setTransportModalVisible(false)}
+          >
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
                 <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
-                  Select Your Mode of Transport
+                  Select Your Ride
                 </Text>
 
-                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Bus")}>
-                  <Text style={styles.optionText}>🚌 Bus</Text>
+                {/* Bus Option */}
+                <TouchableOpacity
+                  style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+                  onPress={() => handleTransportSelection("Bus")}
+                >
+                  <View style={styles.rideDetails}>
+                    <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚌</Text>
+                    <View>
+                      <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Bus</Text>
+                      <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
+                        Estimated time: 15 mins
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.ridePrice, { color: dark ? "white" : "black" }]}>3 RON</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.optionButton} onPress={() => handleTransportSelection("Uber")}>
-                  <Text style={styles.optionText}>🚗 Uber</Text>
+                {/* Uber Option */}
+                <TouchableOpacity
+                  style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+                  onPress={() => handleTransportSelection("Uber")}
+                >
+                  <View style={styles.rideDetails}>
+                    <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>
+                    <View>
+                      <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Uber</Text>
+                      <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
+                        Estimated time: 8 mins
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.ridePrice, { color: dark ? "white" : "black" }]}>25 RON</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
+                {/* Cancel Button */}
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={handleCancelTransportSelection}
+                >
                   <Text style={styles.cancelText}>❌ Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -474,7 +509,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: "#ff4d4d",
     padding: 15,
-    width: "90%",
+    width: "100%",
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
@@ -526,6 +561,10 @@ const styles = StyleSheet.create({
     left: 35,
     borderRadius: 60,
     padding: 20,
+    elevation: 10,
+    shadowOpacity: 5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
   },
   modalContainer: {
     flex: 1,
@@ -533,10 +572,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0)",
   },
   modalContent: {
-    padding: 20,
+    padding: 16,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    alignItems: "center"
   },
   modalTitle: {
     fontSize: 18,
@@ -566,4 +604,37 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold"
   },
+  rideOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 15,
+    marginVertical: 10,
+    borderRadius: 10,
+    elevation: 2, // Adds shadow for Android
+    shadowColor: "#000", // Adds shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  rideDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rideIcon: {
+    fontSize: 30,
+    marginRight: 15,
+  },
+  rideTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  rideSubtitle: {
+    fontSize: 14,
+  },
+  ridePrice: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 });
+
