@@ -49,6 +49,7 @@ export default function TabOneScreen() {
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
   const {data:searches, error:searchError} = useFetchSearches();
+  const [searchVisible, setSearchVisible] = useState<boolean>(true);
   const [busStops, setBusStops] = useState([]);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
@@ -267,6 +268,7 @@ export default function TabOneScreen() {
 
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
+    setSearchVisible(true);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -405,10 +407,12 @@ export default function TabOneScreen() {
             ))}
           </MapView>
           {/* SEARCH BUTTON */}
-          <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
-            <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-            <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
-          </TouchableOpacity>
+          {searchVisible && (
+            <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
+              <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
+            </TouchableOpacity>
+          )}
 
 
           {/* MY LOCATION BUTTON */}
@@ -428,14 +432,14 @@ export default function TabOneScreen() {
           </TouchableOpacity>
 
         {/* Conditionally Render Search Bar */}
-{!transportModalVisible && (
+{/* {!transportModalVisible && (
   <TouchableOpacity
     onPress={() => setIsFocused(true)} // Trigger focus when the search bar is pressed
     style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}
   >
     <Feather name="search" size={24} color={'#9A9A9A'} style={styles.inputIcon} />
     <TextInput
-      editable={true} // Allow the user to interact with the TextInput
+      editable={false} // Allow the user to interact with the TextInput
       style={{ ...styles.textInput, color: dark ? 'white' : 'black' }}
       placeholder="Where do you want to go?"
       placeholderTextColor={dark ? 'white' : 'black'}
@@ -443,7 +447,7 @@ export default function TabOneScreen() {
       onBlur={() => setIsFocused(false)} // Close the search bar when it loses focus
     />
   </TouchableOpacity>
-)}
+)} */}
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
@@ -455,7 +459,6 @@ export default function TabOneScreen() {
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
                 onPress={(data, details = null) => {
-                  console.log(details?.geometry.location.lat);
                   if (!details || !details.geometry) return;
                   dispatch(
                     setDestination({
@@ -463,8 +466,8 @@ export default function TabOneScreen() {
                       description: data.description,
                     }))
                   setTransportModalVisible(true);
-                  //NU MERGE!!!
-                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
+                  setSearchVisible(false);
+                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
                 }}
                 query={{
                   key: GOOGLE_MAPS_PLACES_LEGACY,
@@ -525,7 +528,7 @@ export default function TabOneScreen() {
   animationType="slide"
   transparent={true}
   visible={transportModalVisible}
-  onRequestClose={() => setTransportModalVisible(false)}
+  onRequestClose={() =>{ setTransportModalVisible(false); setSearchVisible(true)}}
 >
   <View style={styles.modalContainer}>
     <View style={[styles.modalContent, { backgroundColor: dark ? 'black' : 'white' }]}>
