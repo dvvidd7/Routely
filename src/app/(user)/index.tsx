@@ -450,8 +450,8 @@ export default function TabOneScreen() {
 )} */}
 
           {/* Autocomplete Modal */}
-          <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
-            <View>
+          <Modal style={{backgroundColor: 'black'}} animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
+            <View style={{ flex: 1, backgroundColor: dark ? 'black' : 'white', justifyContent: 'center', alignItems: 'center' }}>
               {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
               <GooglePlacesAutocomplete
                 ref={searchRef}
@@ -510,7 +510,7 @@ export default function TabOneScreen() {
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
-                <Text style={styles.modalTitle}>Select a Hazard</Text>
+                <Text style={{...styles.modalTitle, color: dark ? 'white' : 'black'}}>Select a Hazard</Text>
                 {hazards.map((hazard) => (
                   <TouchableOpacity key={hazard.id} style={styles.optionButton} onPress={() => handleSelectHazard(hazard)}>
                     <Text style={styles.optionText}>{hazard.icon} {hazard.label}</Text>
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   optionButton: {
     backgroundColor: "#eee",
     padding: 15,
-    width: "90%",
+    width: '100%',
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 5,

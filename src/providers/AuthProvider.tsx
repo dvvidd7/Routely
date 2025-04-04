@@ -43,7 +43,6 @@ export default function AuthProvider({children}: PropsWithChildren)
           });
 
     }, []);
-
     return (
         <AuthContext.Provider value={{session, loading, profile, isAdmin: profile?.group === 'ADMIN', user: profile?.username}}>
             {children}

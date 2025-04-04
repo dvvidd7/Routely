@@ -62,3 +62,20 @@ export const useUpdatePoints = () => {
         },
     })
 };
+
+export const useGetUsers = () => {
+
+    return useQuery({
+        queryKey: ['users'],
+        async queryFn(){
+            const {data, error} = await supabase
+            .from("profiles")
+            .select("*")
+            .order("points", {ascending: false});
+
+            if(error) throw new Error(error.message);
+
+            return data;
+        }
+    })
+}
