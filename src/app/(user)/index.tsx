@@ -56,7 +56,7 @@ export default function TabOneScreen() {
   }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
-
+  
   useEffect(() => {
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -265,7 +265,6 @@ export default function TabOneScreen() {
     }
   };
 
-
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
     setSearchVisible(true);
@@ -290,49 +289,6 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          {/* <GooglePlacesAutocomplete
-            ref={searchRef}
-            placeholder="Where do you want to go?"
-            fetchDetails={true}
-            nearbyPlacesAPI="GooglePlacesSearch"
-            onPress={(data, details = null) => {
-              if (!details || !details.geometry) return;
-              dispatch(
-                setDestination({
-                  location: details.geometry.location,
-                  description: data.description,
-                }))
-                
-                if (searchRef.current) {
-                  searchRef.current.clear();
-                }
-                setTransportModalVisible(true);  
-            }}
-            query={{
-              key: GOOGLE_MAPS_PLACES_LEGACY,
-              language: 'en',
-              location: userLocation
-              ? `${userLocation.latitude},${userLocation.longitude}`
-              : undefined,
-            radius: 20000, // meters
-            }}
-            onFail={error => console.error(error)}
-            styles={{
-              container: styles.topSearch,
-              textInput: [
-                styles.searchInput,
-                isFocused && styles.searchInputFocused,
-                dark && styles.searchInputDark
-              ],
-            }}
-            textInputProps={{
-              onFocus: () => setIsFocused(true),
-              onBlur: () => setIsFocused(false),
-              placeholderTextColor: dark ? 'white' : 'black',
-            }}
-            debounce={300}
-            enablePoweredByContainer={false}
-          /> */}
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -431,24 +387,6 @@ export default function TabOneScreen() {
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
 
-        {/* Conditionally Render Search Bar */}
-{/* {!transportModalVisible && (
-  <TouchableOpacity
-    onPress={() => setIsFocused(true)} // Trigger focus when the search bar is pressed
-    style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}
-  >
-    <Feather name="search" size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-    <TextInput
-      editable={false} // Allow the user to interact with the TextInput
-      style={{ ...styles.textInput, color: dark ? 'white' : 'black' }}
-      placeholder="Where do you want to go?"
-      placeholderTextColor={dark ? 'white' : 'black'}
-      onFocus={() => setIsFocused(true)} // Open the autocomplete modal when focused
-      onBlur={() => setIsFocused(false)} // Close the search bar when it loses focus
-    />
-  </TouchableOpacity>
-)} */}
-
           {/* Autocomplete Modal */}
           <Modal style={{backgroundColor: 'black'}} animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
             <View style={{ flex: 1, backgroundColor: dark ? 'black' : 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -500,7 +438,7 @@ export default function TabOneScreen() {
                 keyboardShouldPersistTaps="handled"
                 renderItem={({item}) => <RecentSearch searchText={item.searchText} searchRef={searchRef}/>}
                 contentContainerStyle={{gap: 5}}
-                style={{position: "relative",top:180, left: 25}}
+                style={{position: "relative",top:390, left: 25}}
               />
             </View>
           </Modal>
