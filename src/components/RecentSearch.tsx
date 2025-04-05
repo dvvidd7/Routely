@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         zIndex: 1000,
-        width: '92%'
+        width: '91%'
     },
     text:{
         fontSize: 15,

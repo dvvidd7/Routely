@@ -1,5 +1,5 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Entypo, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -8,7 +8,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { useNavigation, useRouter } from 'expo-router';
-import { useGetPoints, useUpdateTransport, useUpdateUser } from '@/api/profile';
+import { useGetPoints, useGetUsers, useUpdateTransport, useUpdateUser } from '@/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import LeaderboardUser from '@/components/LeaderboardUser';
@@ -33,8 +33,10 @@ export default function TabTwoScreen() {
   const {user: dataUsername, profile} = useAuth();
   const {mutate:updateUsername} = useUpdateUser();
   const {mutate:updateTransport} = useUpdateTransport();
+  const {data: users, error: usersError} = useGetUsers();
   const {data:points, error} = useGetPoints();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -142,11 +144,22 @@ export default function TabTwoScreen() {
           <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{marginRight: 20}} />
         </View>
       </View>
+
+      {/* LEADERBOARD MODAL */}
       <Modal visible={modalVisible} transparent={true}  onRequestClose={()=> setModalVisible(false)} animationType='slide'>
         <View style={{...styles.modal, backgroundColor: dark ? 'black' : 'white'}}>
-          {LeaderboardUser(username)}
+          {/* {LeaderboardUser(profile)} */}
+          <FlatList
+            data={users}
+            renderItem={({item, index}) => {
+              return <LeaderboardUser index={index} userN={item}/>
+            }}
+            contentContainerStyle={{gap: 10}}
+          />
         </View>
       </Modal>
+
+
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
