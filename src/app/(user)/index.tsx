@@ -56,6 +56,42 @@ export default function TabOneScreen() {
   }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
+  const origin = userLocation
+  ? `${userLocation.latitude},${userLocation.longitude}`
+  : null; // Fallback to null if userLocation is not available
+
+  const [rideInfo, setRideInfo] = useState<{
+    Bus: { price: number; time: number };
+    Uber: { price: string; time: number };
+    RealTime: { googleDuration: number; distance: number };
+  } | null>(null);
+
+  const openTransportModal = () => {
+    setTransportModalVisible(true);
+  };
+
+  const closeTransportModal = () => {
+    setTransportModalVisible(false);
+  };
+
+  const openUber = () => {
+    if (!userLocation || !destination || !destination.location) return;
+  
+    const { lat, lng } = destination.location; // Extract latitude and longitude
+    const nickname = destination.description; // Use the description as the nickname
+  
+    const uberUrl = `uber://?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nickname)}`;
+  
+    Linking.canOpenURL(uberUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(uberUrl);
+      } else {
+        // Fallback to mobile web
+        const fallbackUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nickname)}`;
+        Linking.openURL(fallbackUrl);
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -316,6 +352,7 @@ export default function TabOneScreen() {
     }
   };
 
+
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
 
@@ -339,6 +376,49 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       {hasPermission ? (
         <>
+          {/* <GooglePlacesAutocomplete
+            ref={searchRef}
+            placeholder="Where do you want to go?"
+            fetchDetails={true}
+            nearbyPlacesAPI="GooglePlacesSearch"
+            onPress={(data, details = null) => {
+              if (!details || !details.geometry) return;
+              dispatch(
+                setDestination({
+                  location: details.geometry.location,
+                  description: data.description,
+                }))
+                
+                if (searchRef.current) {
+                  searchRef.current.clear();
+                }
+                setTransportModalVisible(true);  
+            }}
+            query={{
+              key: GOOGLE_MAPS_PLACES_LEGACY,
+              language: 'en',
+              location: userLocation
+              ? `${userLocation.latitude},${userLocation.longitude}`
+              : undefined,
+            radius: 20000, // meters
+            }}
+            onFail={error => console.error(error)}
+            styles={{
+              container: styles.topSearch,
+              textInput: [
+                styles.searchInput,
+                isFocused && styles.searchInputFocused,
+                dark && styles.searchInputDark
+              ],
+            }}
+            textInputProps={{
+              onFocus: () => setIsFocused(true),
+              onBlur: () => setIsFocused(false),
+              placeholderTextColor: dark ? 'white' : 'black',
+            }}
+            debounce={300}
+            enablePoweredByContainer={false}
+          /> */}
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -436,22 +516,22 @@ export default function TabOneScreen() {
           </TouchableOpacity>
 
         {/* Conditionally Render Search Bar */}
-{/* {!transportModalVisible && (
+{!transportModalVisible && (
   <TouchableOpacity
     onPress={() => setIsFocused(true)} // Trigger focus when the search bar is pressed
     style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}
   >
     <Feather name="search" size={24} color={'#9A9A9A'} style={styles.inputIcon} />
     <TextInput
-      editable={false} // Allow the user to interact with the TextInput
+      editable={true} // Allow the user to interact with the TextInput
       style={{ ...styles.textInput, color: dark ? 'white' : 'black' }}
       placeholder="Where do you want to go?"
       placeholderTextColor={dark ? 'white' : 'black'}
       onFocus={() => setIsFocused(true)} // Open the autocomplete modal when focused
       onBlur={() => setIsFocused(false)} // Close the search bar when it loses focus
-    />
+    /> 
   </TouchableOpacity>
-)} */}
+)}
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
