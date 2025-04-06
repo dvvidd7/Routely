@@ -36,7 +36,6 @@ export default function TabTwoScreen() {
   const { data: users, error: usersError } = useGetUsers();
   const { data: points, error } = useGetPoints();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [refreshing, setRefreshing] = useState(false); // State to track refreshing
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -72,17 +71,6 @@ export default function TabTwoScreen() {
       subscription.remove();
     };
   }, []);
-
-  // const handleRefresh = async () => {
-  //   setRefreshing(true); // Start refreshing
-  //   try {
-  //     await refetch(); // Refetch the leaderboard data
-  //   } catch (error) {
-  //     console.error("Error refreshing leaderboard:", error);
-  //   } finally {
-  //     setRefreshing(false); // Stop refreshing
-  //   }
-  // };
 
   const openEmail = () => {
     Linking.openURL("mailto: davidmanciu1881@gmail.com")

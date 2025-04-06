@@ -5,11 +5,15 @@ import TabBarButton from './TabBarButton';
 import { useState } from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function TabBar({ state, descriptors, navigation, transportModalVisible }: BottomTabBarProps & { transportModalVisible: boolean }) {
   const { colors, dark } = useTheme();
   const isAdmin = state.routes.length === 3; // Check if there are 3 tabs (admin page)
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
   const buttonWidth = dimensions.width / state.routes.length;
+
+  if (transportModalVisible) {
+    return null; // Hide the TabBar
+  }
 
   const onTabbarLayout = (e: LayoutChangeEvent) => {
     setDimensions({

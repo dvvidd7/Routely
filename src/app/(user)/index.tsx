@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable } from 'react-native';
+import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
@@ -38,6 +38,7 @@ const hazards: Hazard[] = [
 ];
 
 export default function TabOneScreen() {
+  const [selected, setSelected] = useState<string | null>(null);
   const { dark } = useTheme();
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -49,13 +50,48 @@ export default function TabOneScreen() {
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
   const {data:searches, error:searchError} = useFetchSearches();
-  const [searchVisible, setSearchVisible] = useState<boolean>(true);
   const [busStops, setBusStops] = useState([]);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
+  const origin = userLocation
+  ? `${userLocation.latitude},${userLocation.longitude}`
+  : null; // Fallback to null if userLocation is not available
+
+  const [rideInfo, setRideInfo] = useState<{
+    Bus: { price: number; time: number };
+    Uber: { price: string; time: number };
+    RealTime: { googleDuration: number; distance: number };
+  } | null>(null);
+
+  const openTransportModal = () => {
+    setTransportModalVisible(true);
+  };
+
+  const closeTransportModal = () => {
+    setTransportModalVisible(false);
+  };
+
+  const openUber = () => {
+    if (!userLocation || !destination || !destination.location) return;
+  
+    const { lat, lng } = destination.location; // Extract latitude and longitude
+    const nickname = destination.description; // Use the description as the nickname
+  
+    const uberUrl = `uber://?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nickname)}`;
+  
+    Linking.canOpenURL(uberUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(uberUrl);
+      } else {
+        // Fallback to mobile web
+        const fallbackUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nickname)}`;
+        Linking.openURL(fallbackUrl);
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -87,6 +123,57 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!userLocation || !destination || !destination.description) return;
+  
+    const getTravelTime = async () => {
+      try {
+        const origin = `${userLocation.latitude},${userLocation.longitude}`;
+        const encodedDestination = encodeURIComponent(destination.description);
+  
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${encodedDestination}&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+        );
+  
+        const data = await response.json();
+  
+        if (data.routes.length > 0) {
+          const leg = data.routes[0].legs[0];
+          const durationMin = Math.ceil(leg.duration.value / 60);
+          const distanceKm = leg.distance.value / 1000;
+  
+          // Calculate dynamic price
+          const baseFare = 5;
+          const costPerKm = 2;
+          const uberPrice = (baseFare + costPerKm * distanceKm).toFixed(2);
+  
+          setRideInfo({
+            Bus: {
+              price: 3,
+              time: Math.ceil((distanceKm / 20) * 60), // ~20 km/h
+            },
+            Uber: {
+              price: uberPrice,
+              time: Math.ceil((distanceKm / 40) * 60), // ~40 km/h
+            },
+            RealTime: {
+              googleDuration: durationMin,
+              distance: distanceKm
+            }
+          });
+        } else {
+          console.warn("No routes found in directions response");
+        }
+      } catch (error) {
+        console.error("Error fetching travel time:", error);
+      }
+    };
+  
+    getTravelTime();
+  }, [userLocation, destination, GOOGLE_MAPS_PLACES_LEGACY]);
+  
+  
 
   useEffect(() => {
     const fetchHazards = async () => {
@@ -268,7 +355,6 @@ export default function TabOneScreen() {
 
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
-    setSearchVisible(true);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -284,7 +370,7 @@ export default function TabOneScreen() {
   };
 
   function handleTransportSelection(_arg0: string): void {
-    throw new Error('Function not implemented.');
+    setSelected(_arg0)
   }
   return (
     <View style={styles.container}>
@@ -407,12 +493,10 @@ export default function TabOneScreen() {
             ))}
           </MapView>
           {/* SEARCH BUTTON */}
-          {searchVisible && (
-            <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
-              <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
+            <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+            <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
+          </TouchableOpacity>
 
 
           {/* MY LOCATION BUTTON */}
@@ -432,26 +516,26 @@ export default function TabOneScreen() {
           </TouchableOpacity>
 
         {/* Conditionally Render Search Bar */}
-{/* {!transportModalVisible && (
+{!transportModalVisible && (
   <TouchableOpacity
     onPress={() => setIsFocused(true)} // Trigger focus when the search bar is pressed
     style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}
   >
     <Feather name="search" size={24} color={'#9A9A9A'} style={styles.inputIcon} />
     <TextInput
-      editable={false} // Allow the user to interact with the TextInput
+      editable={true} // Allow the user to interact with the TextInput
       style={{ ...styles.textInput, color: dark ? 'white' : 'black' }}
       placeholder="Where do you want to go?"
       placeholderTextColor={dark ? 'white' : 'black'}
       onFocus={() => setIsFocused(true)} // Open the autocomplete modal when focused
       onBlur={() => setIsFocused(false)} // Close the search bar when it loses focus
-    />
+    /> 
   </TouchableOpacity>
-)} */}
+)}
 
           {/* Autocomplete Modal */}
-          <Modal style={{backgroundColor: 'black'}} animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
-            <View style={{ flex: 1, backgroundColor: dark ? 'black' : 'white', justifyContent: 'center', alignItems: 'center' }}>
+          <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
+          <View> 
               {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
               <GooglePlacesAutocomplete
                 ref={searchRef}
@@ -459,6 +543,7 @@ export default function TabOneScreen() {
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
                 onPress={(data, details = null) => {
+                  console.log(details?.geometry.location.lat);
                   if (!details || !details.geometry) return;
                   dispatch(
                     setDestination({
@@ -466,8 +551,8 @@ export default function TabOneScreen() {
                       description: data.description,
                     }))
                   setTransportModalVisible(true);
-                  setSearchVisible(false);
-                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
+                  //NU MERGE!!!
+                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
                 }}
                 query={{
                   key: GOOGLE_MAPS_PLACES_LEGACY,
@@ -500,7 +585,7 @@ export default function TabOneScreen() {
                 keyboardShouldPersistTaps="handled"
                 renderItem={({item}) => <RecentSearch searchText={item.searchText} searchRef={searchRef}/>}
                 contentContainerStyle={{gap: 5}}
-                style={{position: "relative",top:180, left: 25}}
+                style={{position: "relative",top:390, left: 25}}
               />
             </View>
           </Modal>
@@ -510,7 +595,7 @@ export default function TabOneScreen() {
           <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
-                <Text style={{...styles.modalTitle, color: dark ? 'white' : 'black'}}>Select a Hazard</Text>
+                <Text style={styles.modalTitle}>Select a Hazard</Text>
                 {hazards.map((hazard) => (
                   <TouchableOpacity key={hazard.id} style={styles.optionButton} onPress={() => handleSelectHazard(hazard)}>
                     <Text style={styles.optionText}>{hazard.icon} {hazard.label}</Text>
@@ -524,59 +609,82 @@ export default function TabOneScreen() {
           </Modal>
 
           {/* Transport Selection Modal */}
-<Modal
-  animationType="slide"
-  transparent={true}
-  visible={transportModalVisible}
-  onRequestClose={() =>{ setTransportModalVisible(false); setSearchVisible(true)}}
->
-  <View style={styles.modalContainer}>
-    <View style={[styles.modalContent, { backgroundColor: dark ? 'black' : 'white' }]}>
-      <Text style={[styles.modalTitle, { color: dark ? 'white' : 'black' }]}>
-        Select Your Ride
+{/* Transport Selection Panel (Replaces Modal) */}
+{transportModalVisible && (
+  <View style={{
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: dark ? 'black' : 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8
+  }}>
+    <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
+      Select Your Ride
+    </Text>
+
+    {/* Bus Option */}
+    <TouchableOpacity
+      style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+      onPress={() => handleTransportSelection("Bus")}
+    >
+      <View style={styles.rideDetails}>
+        <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚌</Text>
+        <View>
+          <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Bus</Text>
+          <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
+            Estimated time: 15 mins
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.ridePrice, { color: dark ? "white" : "black" }]}>3 RON</Text>
+    </TouchableOpacity>
+
+    {/* Uber Option */}
+    <TouchableOpacity
+      style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+      onPress={() => {
+        handleTransportSelection("Uber");
+        openUber();
+      }}
+    >
+      <View style={styles.rideDetails}>
+        <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>
+        <View>
+          <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Uber</Text>
+          <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
+            Estimated time: {rideInfo?.RealTime?.googleDuration ?? "N/A"} mins
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.ridePrice, { color: dark ? "white" : "black" }]}>
+        ~ {rideInfo?.Uber?.price ?? "N/A"} RON
       </Text>
+    </TouchableOpacity>
 
-      {/* Bus Option */}
-      <TouchableOpacity
-        style={[styles.rideOption, { backgroundColor: dark ? '#1c1c1c' : '#f9f9f9' }]}
-        onPress={() => handleTransportSelection('Bus')}
-      >
-        <View style={styles.rideDetails}>
-          <Text style={[styles.rideIcon, { color: dark ? 'white' : 'black' }]}>🚌</Text>
-          <View>
-            <Text style={[styles.rideTitle, { color: dark ? 'white' : 'black' }]}>Bus</Text>
-            <Text style={[styles.rideSubtitle, { color: dark ? '#ccc' : '#555' }]}>
-              Estimated time: 15 mins
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.ridePrice, { color: dark ? 'white' : 'black' }]}>3 RON</Text>
-      </TouchableOpacity>
-
-      {/* Uber Option */}
-      <TouchableOpacity
-        style={[styles.rideOption, { backgroundColor: dark ? '#1c1c1c' : '#f9f9f9' }]}
-        onPress={() => handleTransportSelection('Uber')}
-      >
-        <View style={styles.rideDetails}>
-          <Text style={[styles.rideIcon, { color: dark ? 'white' : 'black' }]}>🚗</Text>
-          <View>
-            <Text style={[styles.rideTitle, { color: dark ? 'white' : 'black' }]}>Uber</Text>
-            <Text style={[styles.rideSubtitle, { color: dark ? '#ccc' : '#555' }]}>
-              Estimated time: 8 mins
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.ridePrice, { color: dark ? 'white' : 'black' }]}>25 RON</Text>
-      </TouchableOpacity>
-
-      {/* Cancel Button */}
-      <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
-        <Text style={styles.cancelText}>❌ Cancel</Text>
-      </TouchableOpacity>
-    </View>
+    {/* Cancel Button */}
+    <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
+      <Text style={styles.cancelText}>❌ Cancel</Text>
+    </TouchableOpacity>
   </View>
-</Modal>
+)}
+
+
+{/* Elsewhere */}
+{!hasPermission && (
+  <Text style={styles.permissionText}>
+    Location Permission Required. Please allow location access to view the map.
+  </Text>
+)}
+
 
         </>
       ) : (
@@ -658,7 +766,7 @@ const styles = StyleSheet.create({
   optionButton: {
     backgroundColor: "#eee",
     padding: 15,
-    width: '100%',
+    width: "100%",
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 5,
@@ -716,12 +824,14 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    width: "100%",
+    alignItems:'center'
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 10
+    marginBottom: 10,
   },
   hazardButtonOptions: {
     padding: 15,
@@ -729,6 +839,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ddd",
     borderRadius: 15,
     alignItems: "center",
+    alignSelf: "stretch",
     height: 60,
   },
   hazardText: {
@@ -778,3 +889,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+function setRideInfo(arg0: {
+  Bus: { price: number; time: number; }; Uber: { price: string; time: number; }; RealTime: {
+    googleDuration: number; // Actual Google-estimated travel time
+    distance: number;
+  };
+}) {
+  throw new Error('Function not implemented.');
+}

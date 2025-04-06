@@ -15,45 +15,62 @@ export default function Panel({ navigation }: any) {
     // Function to fetch hazards initially
     const fetchHazards = async () => {
       const { data, error } = await supabase.from("hazards").select("*");
-
+  
       if (error) {
         console.error("Error fetching hazards:", error);
         return;
       }
-
-      setHazards(data || []);
+  
+      // Filter out old hazards (e.g., older than 1 day)
+      const filteredHazards = data.filter((hazard) => {
+        const hazardDate = new Date(hazard.created_at);
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        return hazardDate >= oneDayAgo;
+      });
+  
+      setHazards(filteredHazards || []);
     };
 
     fetchHazards();
 
     // Subscribe to real-time updates
     const subscription = supabase
-      .channel("hazards-changes") // Unique channel name
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "hazards" },
-        (payload) => {
-          console.log("Change received!", payload);
+    .channel("hazards-changes") // Unique channel name
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "hazards" },
+      (payload) => {
+        console.log("Change received!", payload);
 
-          // Handle different events (INSERT, UPDATE, DELETE)
-          if (payload.eventType === "INSERT") {
-            setHazards((prevHazards) => [...prevHazards, payload.new as { id: number; label: string; created_at: string; latitude: number; longitude: number; icon: string; email: string }]);
-          } else if (payload.eventType === "UPDATE") {
-            setHazards((prevHazards) =>
-              prevHazards.map((h) => (h.id === payload.new.id ? payload.new as { id: number; label: string; created_at: string; latitude: number; longitude: number; icon: string; email: string } : h))
-            );
-          } else if (payload.eventType === "DELETE") {
-            setHazards((prevHazards) => prevHazards.filter((h) => h.id !== payload.old.id));
-          }
+        if (payload.eventType === "INSERT") {
+          setHazards((prevHazards) => {
+            const exists = prevHazards.some((h) => h.id === (payload.new as typeof hazards[0]).id);
+            if (!exists) {
+              return [...prevHazards, payload.new as typeof hazards[0]];
+            }
+            return prevHazards;
+          });
+        } else if (payload.eventType === "UPDATE") {
+          setHazards((prevHazards) =>
+            prevHazards.map((h) =>
+              h.id === (payload.new as typeof hazards[0]).id ? (payload.new as typeof hazards[0]) : h
+            )
+          );
+        } else if (payload.eventType === "DELETE") {
+          setHazards((prevHazards) =>
+            prevHazards.filter((h) => h.id !== (payload.old as typeof hazards[0]).id)
+          );
         }
-      )
-      .subscribe();
+      }
+    )
+    .subscribe();
 
-    // Cleanup on unmount
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []);
+  // Cleanup on unmount
+  return () => {
+    supabase.removeChannel(subscription);
+  };
+}, []);
 
   return (
     <View style={[styles.container, { backgroundColor: dark ? "#0f0f0f" : "white" }]}>
@@ -61,7 +78,7 @@ export default function Panel({ navigation }: any) {
       <FlatList
         data={hazards}
         keyExtractor={(item) => item.id.toString()}
-        style={{ flex: 1 }} 
+        style={{ flex: 1, marginBottom:110 }} 
         contentContainerStyle={{
           backgroundColor: dark ? "#0f0f0f" : "white",
           flexGrow: 1, 
@@ -89,7 +106,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    marginTop: 55,
+    marginTop: 60,
     marginBottom: 10,
     textAlign: "center",
   },

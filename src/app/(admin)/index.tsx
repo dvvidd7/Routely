@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   optionButton: {
     backgroundColor: "#eee",
     padding: 15,
-    width: "90%",
+    width: "100%",
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 5,
