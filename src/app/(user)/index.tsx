@@ -51,6 +51,7 @@ export default function TabOneScreen() {
   const destination = useSelector(selectDestination);
   const {data:searches, error:searchError} = useFetchSearches();
   const [busStops, setBusStops] = useState([]);
+  const [searchVisible, setSearchVisible] = useState<boolean>(true);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -68,10 +69,12 @@ export default function TabOneScreen() {
 
   const openTransportModal = () => {
     setTransportModalVisible(true);
+    setSearchVisible(true);
   };
 
   const closeTransportModal = () => {
     setTransportModalVisible(false);
+    setSearchVisible(false);
   };
 
   const openUber = () => {
@@ -209,7 +212,7 @@ export default function TabOneScreen() {
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'profiles' },
       (payload) => {
-        console.log('Change received!', payload);
+        //console.log('Change received!', payload);
         queryClient.invalidateQueries({queryKey: ['points']})
       }
     )
@@ -285,7 +288,7 @@ export default function TabOneScreen() {
       //   // console.log(busStops);
       // };
     
-      // fetchBusStops();
+      //fetchBusStops();
     //console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
   }, [destination])
 
@@ -355,6 +358,7 @@ export default function TabOneScreen() {
 
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
+    setSearchVisible(true);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -376,49 +380,6 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          {/* <GooglePlacesAutocomplete
-            ref={searchRef}
-            placeholder="Where do you want to go?"
-            fetchDetails={true}
-            nearbyPlacesAPI="GooglePlacesSearch"
-            onPress={(data, details = null) => {
-              if (!details || !details.geometry) return;
-              dispatch(
-                setDestination({
-                  location: details.geometry.location,
-                  description: data.description,
-                }))
-                
-                if (searchRef.current) {
-                  searchRef.current.clear();
-                }
-                setTransportModalVisible(true);  
-            }}
-            query={{
-              key: GOOGLE_MAPS_PLACES_LEGACY,
-              language: 'en',
-              location: userLocation
-              ? `${userLocation.latitude},${userLocation.longitude}`
-              : undefined,
-            radius: 20000, // meters
-            }}
-            onFail={error => console.error(error)}
-            styles={{
-              container: styles.topSearch,
-              textInput: [
-                styles.searchInput,
-                isFocused && styles.searchInputFocused,
-                dark && styles.searchInputDark
-              ],
-            }}
-            textInputProps={{
-              onFocus: () => setIsFocused(true),
-              onBlur: () => setIsFocused(false),
-              placeholderTextColor: dark ? 'white' : 'black',
-            }}
-            debounce={300}
-            enablePoweredByContainer={false}
-          /> */}
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -493,10 +454,12 @@ export default function TabOneScreen() {
             ))}
           </MapView>
           {/* SEARCH BUTTON */}
-          <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
-            <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-            <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
-          </TouchableOpacity>
+          {searchVisible && (
+            <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
+              <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
+            </TouchableOpacity>
+          )}
 
 
           {/* MY LOCATION BUTTON */}
@@ -515,23 +478,6 @@ export default function TabOneScreen() {
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
 
-        {/* Conditionally Render Search Bar */}
-{!transportModalVisible && (
-  <TouchableOpacity
-    onPress={() => setIsFocused(true)} // Trigger focus when the search bar is pressed
-    style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}
-  >
-    <Feather name="search" size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-    <TextInput
-      editable={true} // Allow the user to interact with the TextInput
-      style={{ ...styles.textInput, color: dark ? 'white' : 'black' }}
-      placeholder="Where do you want to go?"
-      placeholderTextColor={dark ? 'white' : 'black'}
-      onFocus={() => setIsFocused(true)} // Open the autocomplete modal when focused
-      onBlur={() => setIsFocused(false)} // Close the search bar when it loses focus
-    /> 
-  </TouchableOpacity>
-)}
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
@@ -551,7 +497,7 @@ export default function TabOneScreen() {
                       description: data.description,
                     }))
                   setTransportModalVisible(true);
-                  //NU MERGE!!!
+                  setSearchVisible(false);
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
                 }}
                 query={{

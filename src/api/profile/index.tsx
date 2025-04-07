@@ -1,4 +1,4 @@
-import {useMutation, useQuery} from '@tanstack/react-query'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/providers/AuthProvider'
 import { Text } from 'react-native';
@@ -53,6 +53,7 @@ export const useGetPoints = () => {
 }
 export const useUpdatePoints = () => {
     const {session} = useAuth();
+    const query = useQueryClient();
     return useMutation({
         async mutationFn(data: any){
             const { data:newPoints, error } = await supabase.rpc('increment', {row_id: session?.user.id, x: data.points});
@@ -60,6 +61,9 @@ export const useUpdatePoints = () => {
             return newPoints;
             
         },
+        async onSuccess(){
+            query.invalidateQueries({queryKey: ['users']});
+        }
     })
 };
 
