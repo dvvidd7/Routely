@@ -56,7 +56,7 @@ export default function TabOneScreen() {
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
   const {data:searches, error:searchError} = useFetchSearches();
-  const [busStops, setBusStops] = useState([]);
+  const [estimatedBus, setEstimatedBus] = useState();
   const [routeStops, setRouteStops] = useState<Stop[]>([]);
   const [searchVisible, setSearchVisible] = useState<boolean>(true);
   const [hazardMarkers, setHazardMarkers] = useState<{
@@ -336,8 +336,9 @@ export default function TabOneScreen() {
   }, [destination])
   useEffect(()=>{
     //console.log(routeStops);
-    if (routeStops[0]) {
-      console.log(routeStops[0].from);
+    if (routeStops) {
+      console.log(routeStops);
+      
     }
   }, [routeStops]);
 
