@@ -3,13 +3,14 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState, createContext, useContext } from 'react';
+import { useEffect, useState, createContext } from 'react';
 import 'react-native-reanimated';
 import AuthProvider from '@/providers/AuthProvider';
 import QueryProvider from '@/providers/QueryProvider';
 import { useColorScheme } from '../components/useColorScheme';
 import { Provider } from 'react-redux';
 import { store } from './store';
+import { TransportModalProvider } from './TransportModalContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -35,7 +36,6 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -62,21 +62,23 @@ function RootLayoutNav() {
   };
 
   return (
-    <Provider store={store}>
-      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <QueryProvider>
-          <Stack>
-            <Stack.Screen name="(user)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(admin)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </Stack>
-          </QueryProvider>
-        </AuthProvider>
-        </ThemeProvider>
-      </ThemeContext.Provider>
-    </Provider>
+    <TransportModalProvider>
+      <Provider store={store}>
+        <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+          <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
+            <AuthProvider>
+              <QueryProvider>
+                <Stack>
+                  <Stack.Screen name="(user)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                </Stack>
+              </QueryProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ThemeContext.Provider>
+      </Provider>
+    </TransportModalProvider>
   );
 }
