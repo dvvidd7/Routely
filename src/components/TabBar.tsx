@@ -8,7 +8,7 @@ import { useTransportModal } from '@/app/TransportModalContext';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & { transportModalVisible: boolean }) {
   const { colors, dark } = useTheme();
-  const { transportModalVisible } = useTransportModal(); // Always call this hook
+  const { transportModalVisible } = useTransportModal();
 
   const isAdmin = state.routes.length === 3; // Check if there are 3 tabs (admin page)
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
@@ -36,59 +36,58 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
 
   return (
     <View onLayout={onTabbarLayout} style={[styles.tabbar, { backgroundColor: dark ? '#000' : '#fff' }]}>
-      {transportModalVisible ? (
-        <View style={{ height: 0 }} />
-      ) : (
-        <>
-          <Animated.View
-            style={[
-              animatedStyle,
-              {
-                position: 'absolute',
-                backgroundColor: '#0384fc',
-                borderRadius: 30,
-                marginHorizontal: 25,
-                height: dimensions.height - 15,
-                width: buttonWidth * (isAdmin ? 0.6 : 0.5),
-                left: buttonWidth * (isAdmin ? -0.07 : 0.07),
-              },
-            ]}
+      <Animated.View
+        style={[
+          animatedStyle,
+          {
+            position: 'absolute',
+            backgroundColor: '#0384fc',
+            borderRadius: 30,
+            marginHorizontal: 25,
+            height: dimensions.height - 15,
+            width: buttonWidth * (isAdmin ? 0.6 : 0.5),
+            left: buttonWidth * (isAdmin ? -0.07 : 0.07),
+          },
+        ]}
+      />
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const label = (options.tabBarLabel ?? options.title ?? route.name) as string;
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          tabPositionX.value = withSpring(buttonWidth * index, { duration: 1500 });
+
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name); // Ensure navigation is called
+          }
+        };
+
+        const onLongPress = () => {
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        return (
+          <TabBarButton
+            key={route.key}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            isFocused={isFocused}
+            routeName={route.name}
+            label={label}
+            color={isFocused ? '#FFF' : '#0384fc'}
           />
-          {state.routes.map((route, index) => {
-            const { options } = descriptors[route.key];
-            const label = (options.tabBarLabel ?? options.title ?? route.name) as string;
-            const isFocused = state.index === index;
-  
-            const onPress = () => {
-              tabPositionX.value = withSpring(buttonWidth * index, { duration: 1500 });
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-            };
-  
-            const onLongPress = () => {
-              navigation.emit({
-                type: 'tabLongPress',
-                target: route.key,
-              });
-            };
-  
-            return (
-              <TabBarButton
-                key={route.key}
-                onPress={onPress}
-                onLongPress={onLongPress}
-                isFocused={isFocused}
-                routeName={route.name}
-                label={label}
-                color={isFocused ? '#FFF' : '#0384fc'}
-              />
-            );
-          })}
-        </>
-      )}
+        );
+      })}
     </View>
   );
 }
