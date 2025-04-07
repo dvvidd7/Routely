@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -26,10 +26,19 @@ const INITIAL_REGION = {
 };
 
 type Station = {
-   transit_details: { departure_stop: { name: any; }; arrival_stop: { name: any; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; }; 
+  transit_details: { departure_stop: { name: any; location: { lat: any; lng: any; }; }; arrival_stop: { name: any; location: { lat: any; lng: any; }; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; };
 }
 type Stop = {
-  from: string; to: string; line: string; vehicle: string; departureTime?: string; arrivalTime?: string; headsign?: string
+  from: string;
+  fromCoords: {
+    lat: any;
+    lng: any;
+  } 
+  toCoords: {
+    lat: any;
+    lng: any;
+  } 
+  to: string; line: string; vehicle: string; departureTime?: string; arrivalTime?: string; headsign?: string
 }
 type Hazard = {
   id: number;
@@ -57,9 +66,11 @@ export default function TabOneScreen() {
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
   const {data:searches, error:searchError} = useFetchSearches();
-  const [estimatedBus, setEstimatedBus] = useState();
+  const [estimatedBus, setEstimatedBus] = useState<number | null>(null);
   const [routeStops, setRouteStops] = useState<Stop[]>([]);
+  const [stationVisible, setStationVisible] = useState<boolean>(false);
   const [searchVisible, setSearchVisible] = useState<boolean>(true);
+  const [routeVisible, setRouteVisible] = useState<boolean>(false);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -273,34 +284,7 @@ export default function TabOneScreen() {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
     }, 200);
-    // const fetchBusStops = async () => {
-    //   const lat = destination.location.lat;
-    //   const lon = destination.location.lng;
-    //   const delta = 0.01;
-    
-    //   const south = lat - delta;
-    //   const north = lat + delta;
-    //   const west = lon - delta;
-    //   const east = lon + delta;
-    
-    //   try {
-    //     const response = await fetch(
-    //       `https://overpass-api.de/api/interpreter?data=[out:json];node["highway"="bus_stop"](${south},${west},${north},${east});out body;`
-    //     );
-    //     const data = await response.json();
-    
-    //     const stops = data.elements.map((node) => ({
-    //       id: node.id,
-    //       latitude: node.lat,
-    //       longitude: node.lon,
-    //       name: node.tags.name || 'Bus Stop',
-    //     }));
-    
-    //     setBusStops(stops);
-    //   } catch (error) {
-    //     console.error('Error fetching bus stops:', error);
-    //   }
-    // };
+
     const fetchTransitRoute = async () => {
       try{
         const response = await fetch(
@@ -319,6 +303,14 @@ export default function TabOneScreen() {
         const routeStations = steps.map((step: Station) => ({
           from: step.transit_details?.departure_stop?.name || "Unknown stop",
           to: step.transit_details?.arrival_stop?.name || "Unknown stop",
+          fromCoords: {
+            lat: step.transit_details.departure_stop.location.lat,
+            lng: step.transit_details.departure_stop.location.lng,
+          },
+          toCoords: {
+            lat: step.transit_details.arrival_stop.location.lat,
+            lng: step.transit_details.arrival_stop.location.lng,
+          },
           line: step.transit_details?.line?.short_name || "N/A",
           vehicle: step.transit_details?.line?.vehicle?.type || "Transit",
           departureTime: step.transit_details?.departure_time?.text,
@@ -326,7 +318,7 @@ export default function TabOneScreen() {
           headsign: step.transit_details?.headsign || "",
         }));
       
-        setRouteStops(routeStations); // this would update your UI or map
+        setRouteStops(routeStations);
       }
       catch(error){
         console.error(error);
@@ -335,11 +327,30 @@ export default function TabOneScreen() {
     
     fetchTransitRoute();
   }, [destination])
+  const timeToMinutes = (timeStr: string | undefined) => {
+    if (!timeStr) return undefined;
+    const [time, modifier] = timeStr.toLowerCase().split(/(am|pm)/);
+    let [hours, minutes] = time.split(':').map(Number);
+  
+    if (modifier === 'pm' && hours !== 12) hours += 12;
+    if (modifier === 'am' && hours === 12) hours = 0;
+  
+    return hours * 60 + minutes;
+  };
   useEffect(()=>{
-    //console.log(routeStops);
-    if (routeStops) {
-      console.log(routeStops);
-      
+    if(routeStops.length == 1){
+      const arrivalMinutes = timeToMinutes(routeStops[0].arrivalTime);
+      const departureMinutes = timeToMinutes(routeStops[0].departureTime);
+      if(arrivalMinutes !== undefined && departureMinutes !== undefined){
+        setEstimatedBus(arrivalMinutes - departureMinutes);
+      }
+    }
+    else if (routeStops.length > 1) {
+      const arrivalMinutes = timeToMinutes(routeStops[routeStops.length - 1]?.arrivalTime);
+      const departureMinutes = timeToMinutes(routeStops[0]?.departureTime);
+      if (arrivalMinutes !== undefined && departureMinutes !== undefined) {
+        setEstimatedBus(arrivalMinutes - departureMinutes);
+      }
     }
   }, [routeStops]);
 
@@ -410,6 +421,7 @@ export default function TabOneScreen() {
   const handleCancelTransportSelection = () => {
     closeTransportModal();
     setSearchVisible(true);
+    setStationVisible(false);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -424,8 +436,15 @@ export default function TabOneScreen() {
     setIsFocused(true);
   };
 
-  function handleTransportSelection(_arg0: string): void {
-    setSelected(_arg0)
+  function handleTransportSelection() {
+    console.warn(routeStops[0].fromCoords.lat);
+    setTimeout(() => {
+      mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
+        edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+    }, 200);
+    setRouteVisible(false);
+    setStationVisible(true);
   }
   return (
     <View style={styles.container}>
@@ -448,7 +467,7 @@ export default function TabOneScreen() {
               longitudeDelta: 0.01,
             }}
           >
-            {destination && userLocation?.latitude && userLocation?.longitude && (
+            {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
               <MapViewDirections
                 origin={{
                   latitude: userLocation.latitude,
@@ -460,7 +479,7 @@ export default function TabOneScreen() {
                 strokeColor='#0384fc'
               />
             )}
-            {destination?.location && userLocation && (
+            {destination?.location && userLocation && routeVisible && (
               <Marker
                 coordinate={{
                   latitude: destination.location.lat,
@@ -472,7 +491,7 @@ export default function TabOneScreen() {
                 pinColor='blue'
               />
             )}
-            {userLocation && destination && (
+            {userLocation && destination && routeVisible && (
               <Marker
                 coordinate={{
                   latitude: userLocation?.latitude,
@@ -483,16 +502,54 @@ export default function TabOneScreen() {
                 pinColor='blue'
               />
             )}
-            {/* {routeStops.map((bs) => (
-              <Marker
-              key={bs.id}
-              coordinate={{ latitude: bs.latitude, longitude: bs.longitude }}
-              title={bs.name}
-              description={`${bs.name}`}
-            >
-              <FontAwesome name='bus' size={10} />
-            </Marker>
-            ))} */}
+            {stationVisible && routeStops.map((rs) =>
+                <Marker coordinate={{
+                  latitude: rs.fromCoords.lat,
+                  longitude: rs.fromCoords.lng
+                }}
+                key={rs.from}
+                identifier='departure'
+                title={`Departure number ${routeStops.indexOf(rs)+1}`}
+                description={rs.from}
+                icon={require('../../../assets/images/busiconPS.png')}
+                >
+                </Marker>
+            )}
+            {stationVisible && routeStops.map((rs) =>
+              <Marker coordinate={{
+                latitude: rs.toCoords.lat,
+                longitude: rs.toCoords.lng
+              }}
+              key={rs.to}
+              identifier='arrival'
+              title={`Destination number ${routeStops.indexOf(rs)+1}`}
+              description={rs.to}
+              icon={require('../../../assets/images/busiconPS.png')}
+              >
+              {/* <View style={{ transform: [{ scale: 1 / (mapRef.current?.getCamera()?.zoom || 1) }] }}>
+                <FontAwesome name="bus" size={30} />
+              </View> */}
+              </Marker>
+
+            )}
+            
+            {stationVisible && routeStops.map((rs)=>
+              <MapViewDirections
+                origin={{
+                  latitude: rs.fromCoords.lat,
+                  longitude: rs.fromCoords.lng
+                }}
+                destination={{
+                  latitude: rs.toCoords.lat,
+                  longitude:  rs.toCoords.lng
+                }}
+                key={rs.from}
+                apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                strokeWidth={5}
+                strokeColor='#0384fc'
+              />
+            )}
+            
             {hazardMarkers.map((hazard) => (
               <Marker
                 key={hazard.id}
@@ -546,6 +603,7 @@ export default function TabOneScreen() {
                       location: details.geometry.location,
                       description: data.description,
                     }))
+                  setRouteVisible(true);
                   openTransportModal();
                   setSearchVisible(false);
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
@@ -630,14 +688,14 @@ export default function TabOneScreen() {
     {/* Bus Option */}
     <TouchableOpacity
       style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
-      onPress={() => handleTransportSelection("Bus")}
+      onPress={() => handleTransportSelection()}
     >
       <View style={styles.rideDetails}>
         <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚌</Text>
         <View>
           <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Bus</Text>
           <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
-            Estimated time: 15 mins
+            Estimated time: {estimatedBus} mins
           </Text>
         </View>
       </View>
@@ -648,7 +706,7 @@ export default function TabOneScreen() {
     <TouchableOpacity
       style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
       onPress={() => {
-        handleTransportSelection("Uber");
+        //handleTransportSelection();
         openUber();
       }}
     >
