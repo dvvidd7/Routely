@@ -55,6 +55,14 @@ export default function TabOneScreen() {
   }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  const openTransportModal = () => {
+    setTransportModalVisible(true); // Use the setter function to update the state
+  };
+
+  const closeTransportModal = () => {
+    setTransportModalVisible(false); // Use the setter function to update the state
+  };
+
   useEffect(() => {
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -240,6 +248,7 @@ export default function TabOneScreen() {
 
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
+    closeTransportModal();
 
     // Reset search bar input
     if (searchRef.current) {
@@ -291,6 +300,7 @@ export default function TabOneScreen() {
                 searchRef.current.clear();
               }
               setTransportModalVisible(true);
+              openTransportModal();
             }}
             query={{
               key: GOOGLE_MAPS_PLACES_LEGACY,

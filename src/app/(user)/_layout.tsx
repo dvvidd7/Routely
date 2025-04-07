@@ -17,6 +17,7 @@ const TabLayout = () => {
           title: "Home",
           headerShown: false,
         }}
+        initialParams={{ transportModalVisible, setTransportModalVisible }} // Pass the setter function as a param
       />
       <Tabs.Screen
         name="two"

@@ -16,6 +16,7 @@ import { useCreateSearch, useFetchSearches } from '@/api/recentSearches';
 import { useGetPoints, useUpdatePoints } from '@/api/profile';
 import { useQueryClient } from '@tanstack/react-query';
 import RecentSearch from '@/components/RecentSearch';
+import { useTransportModal } from '../TransportModalContext';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -43,7 +44,7 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [transportModalVisible, setTransportModalVisible] = useState(false);
+  const { transportModalVisible, setTransportModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
@@ -354,7 +355,7 @@ export default function TabOneScreen() {
 
 
   const handleCancelTransportSelection = () => {
-    setTransportModalVisible(false);
+    closeTransportModal();
 
     // Reset search bar input
     if (searchRef.current) {
@@ -550,7 +551,7 @@ export default function TabOneScreen() {
                       location: details.geometry.location,
                       description: data.description,
                     }))
-                  setTransportModalVisible(true);
+                  openTransportModal();
                   //NU MERGE!!!
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
                 }}
