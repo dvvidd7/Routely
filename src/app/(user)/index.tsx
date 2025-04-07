@@ -24,6 +24,12 @@ const INITIAL_REGION = {
   longitudeDelta: 1,
 };
 
+type Station = {
+   transit_details: { departure_stop: { name: any; }; arrival_stop: { name: any; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; }; 
+}
+type Stop = {
+  from: string; to: string; line: string; vehicle: string; departureTime?: string; arrivalTime?: string; headsign?: string
+}
 type Hazard = {
   id: number;
   label: string;
@@ -51,6 +57,7 @@ export default function TabOneScreen() {
   const destination = useSelector(selectDestination);
   const {data:searches, error:searchError} = useFetchSearches();
   const [busStops, setBusStops] = useState([]);
+  const [routeStops, setRouteStops] = useState<Stop[]>([]);
   const [searchVisible, setSearchVisible] = useState<boolean>(true);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
@@ -265,32 +272,74 @@ export default function TabOneScreen() {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
       });
     }, 200);
-      // const fetchBusStops = async () => {      
-        
-      //   //console.log(`${destination.location.lat}, ${destination.location.lng}`);
-      //   try {
-      //     const response = await fetch(
-      //       `https://overpass-api.de/api/interpreter?data=[out:json];node["highway"="bus_stop"](${destination.location.lat},${destination.location.lng},44.12900739999999,28.6252602);out body;`
-      //     );
-      //     const data = await response.json();
+    // const fetchBusStops = async () => {
+    //   const lat = destination.location.lat;
+    //   const lon = destination.location.lng;
+    //   const delta = 0.01;
     
-      //     const stops = data.elements.map((node) => ({
-      //       id: node.id,
-      //       latitude: node.lat,
-      //       longitude: node.lon,
-      //       name: node.tags.name || 'Bus Stop',
-      //     }));
+    //   const south = lat - delta;
+    //   const north = lat + delta;
+    //   const west = lon - delta;
+    //   const east = lon + delta;
     
-      //     setBusStops(stops);
-      //   } catch (error) {
-      //     console.error('Error fetching bus stops:', error);
-      //   }
-      //   // console.log(busStops);
-      // };
+    //   try {
+    //     const response = await fetch(
+    //       `https://overpass-api.de/api/interpreter?data=[out:json];node["highway"="bus_stop"](${south},${west},${north},${east});out body;`
+    //     );
+    //     const data = await response.json();
     
-      //fetchBusStops();
-    //console.log("Price: ", getUberRideEstimate({latitude: userLocation?.latitude, longitude: userLocation?.longitude}, {latitude: destination.location.lat, longitude: destination.location.lng}));
+    //     const stops = data.elements.map((node) => ({
+    //       id: node.id,
+    //       latitude: node.lat,
+    //       longitude: node.lon,
+    //       name: node.tags.name || 'Bus Stop',
+    //     }));
+    
+    //     setBusStops(stops);
+    //   } catch (error) {
+    //     console.error('Error fetching bus stops:', error);
+    //   }
+    // };
+    const fetchTransitRoute = async () => {
+      try{
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+        );
+        const data = await response.json();
+        if (!data.routes || data.routes.length === 0) {
+          console.warn("No transit routes found.");
+          setRouteStops([]);
+          return;
+        }
+        const steps = data.routes[0].legs[0].steps.filter(
+          (step: { travel_mode: string; }) => step.travel_mode === "TRANSIT"
+        );
+      
+        const routeStations = steps.map((step: Station) => ({
+          from: step.transit_details?.departure_stop?.name || "Unknown stop",
+          to: step.transit_details?.arrival_stop?.name || "Unknown stop",
+          line: step.transit_details?.line?.short_name || "N/A",
+          vehicle: step.transit_details?.line?.vehicle?.type || "Transit",
+          departureTime: step.transit_details?.departure_time?.text,
+          arrivalTime: step.transit_details?.arrival_time?.text,
+          headsign: step.transit_details?.headsign || "",
+        }));
+      
+        setRouteStops(routeStations); // this would update your UI or map
+      }
+      catch(error){
+        console.error(error);
+      }
+    };
+    
+    fetchTransitRoute();
   }, [destination])
+  useEffect(()=>{
+    //console.log(routeStops);
+    if (routeStops[0]) {
+      console.log(routeStops[0].from);
+    }
+  }, [routeStops]);
 
   const handleMyLocationPress = async () => {
     try {
@@ -432,7 +481,7 @@ export default function TabOneScreen() {
                 pinColor='blue'
               />
             )}
-            {/* {busStops.map((bs) => (
+            {/* {routeStops.map((bs) => (
               <Marker
               key={bs.id}
               coordinate={{ latitude: bs.latitude, longitude: bs.longitude }}
@@ -489,7 +538,6 @@ export default function TabOneScreen() {
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
                 onPress={(data, details = null) => {
-                  console.log(details?.geometry.location.lat);
                   if (!details || !details.geometry) return;
                   dispatch(
                     setDestination({
