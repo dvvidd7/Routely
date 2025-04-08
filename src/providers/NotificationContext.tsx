@@ -10,7 +10,7 @@ const NotificationContext = createContext<NotificationContextType>({
   setNotification: () => {},
 });
 
-export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
+export const NotificationToggleProvider = ({ children }: { children: React.ReactNode }) => {
   const [notification, setNotification] = useState(true);
 
   return (

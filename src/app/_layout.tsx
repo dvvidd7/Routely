@@ -12,6 +12,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import { TransportModalProvider } from './TransportModalContext';
 import NotificationProvider from '@/providers/NotificationProvider';
+import { NotificationToggleProvider } from '@/providers/NotificationContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -69,14 +70,16 @@ function RootLayoutNav() {
           <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
             <AuthProvider>
               <QueryProvider>
-                <NotificationProvider>
-                 <Stack>
-                  <Stack.Screen name="(user)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(admin)" options={{ headerShown: false }} />
-                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                 </Stack>
-                </NotificationProvider>
+                <NotificationToggleProvider>
+                  <NotificationProvider>
+                    <Stack>
+                      <Stack.Screen name="(user)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+                      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                    </Stack>
+                  </NotificationProvider>
+                </NotificationToggleProvider>
               </QueryProvider>
             </AuthProvider>
           </ThemeProvider>

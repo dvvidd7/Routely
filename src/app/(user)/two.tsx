@@ -254,7 +254,7 @@ export default function TabTwoScreen() {
               />
             </View> */}
             <View>
-              <Pressable onPress={()=>setNotification(false)} style={styles.logoutButton}>
+              <Pressable onPress={()=>setNotification(!notification)} style={styles.logoutButton}>
                 <Text style={styles.logoutText}>notif</Text>
               </Pressable>
             </View>
