@@ -107,7 +107,19 @@ export default function TabOneScreen() {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
+  const handleRecentSearchPress = () => {
+    setIsFocused(false);
+    setRouteVisible(true);
+    setTransportModalVisible(true);
+    if (!destination || !userLocation) return;
 
+    setTimeout(() => {
+      mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+        edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+    }, 200);
+
+  }
   const openUber = () => {
     if (!userLocation || !destination || !destination.location) return;
   
@@ -126,7 +138,6 @@ export default function TabOneScreen() {
       }
     });
   };
-
   useEffect(() => {
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -655,7 +666,7 @@ export default function TabOneScreen() {
               <FlatList
               data={searches}
               keyboardShouldPersistTaps="handled"
-              renderItem={({item}) => <RecentSearch onPress={()=>{setIsFocused(false);}} searchRef={searchRef} userSearch={item} />}
+              renderItem={({item}) => <RecentSearch onPress={handleRecentSearchPress} searchRef={searchRef} userSearch={item} />}
               contentContainerStyle={{gap: 5}}
               style={{position: "relative",top:170, left: 25}}
             />
