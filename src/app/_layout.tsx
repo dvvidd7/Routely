@@ -11,6 +11,7 @@ import { useColorScheme } from '../components/useColorScheme';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { TransportModalProvider } from './TransportModalContext';
+import NotificationProvider from '@/providers/NotificationProvider';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -68,12 +69,14 @@ function RootLayoutNav() {
           <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
             <AuthProvider>
               <QueryProvider>
-                <Stack>
+                <NotificationProvider>
+                 <Stack>
                   <Stack.Screen name="(user)" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                   <Stack.Screen name="(admin)" options={{ headerShown: false }} />
                   <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                </Stack>
+                 </Stack>
+                </NotificationProvider>
               </QueryProvider>
             </AuthProvider>
           </ThemeProvider>
