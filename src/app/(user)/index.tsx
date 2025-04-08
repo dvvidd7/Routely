@@ -352,7 +352,7 @@ export default function TabOneScreen() {
         setEstimatedBus(arrivalMinutes - departureMinutes);
       }
     }
-  }, [routeStops]);
+  }, [routeStops]); 
 
   const handleMyLocationPress = async () => {
     try {
