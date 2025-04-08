@@ -18,6 +18,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import RecentSearch from '@/components/RecentSearch';
 import { useTransportModal } from '../TransportModalContext';
 import BusNavigation from '@/components/BusNavigation';
+import * as Notifications from 'expo-notifications';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -98,6 +99,36 @@ export default function TabOneScreen() {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
+
+   const getUserLocation = async () => {
+          let { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            console.error('Permission to access location was denied');
+            return null;
+          }
+        
+          let location = await Location.getCurrentPositionAsync({});
+          return location.coords;
+        };
+      
+        const getDistanceFromLatLonInMeters = (
+          lat1: number,
+          lon1: number,
+          lat2: number,
+          lon2: number
+        ) => {
+          const R = 6371000; // Radius of the earth in meters
+          const dLat = ((lat2 - lat1) * Math.PI) / 180;
+          const dLon = ((lon2 - lon1) * Math.PI) / 180;
+          const a =
+            0.5 -
+            Math.cos(dLat) / 2 +
+            (Math.cos((lat1 * Math.PI) / 180) *
+              Math.cos((lat2 * Math.PI) / 180) *
+              (1 - Math.cos(dLon))) /
+              2;
+          return R * 2 * Math.asin(Math.sqrt(a));
+        };
 
   const openUber = () => {
     if (!userLocation || !destination || !destination.location) return;
@@ -243,6 +274,8 @@ export default function TabOneScreen() {
     return () => {channels.unsubscribe()}
   },[]);
 
+  
+
   useEffect(() => {
     const channel = supabase
       .channel('hazards')
@@ -251,17 +284,54 @@ export default function TabOneScreen() {
         { event: '*', schema: 'public', table: 'hazards' },
         (payload) => {
           console.log('Change received!', payload);
-          updatePoints({points: 5});
+          updatePoints({ points: 5 });
           const now = new Date();
+  
           if (payload.eventType === 'INSERT') {
-            const hazardTime = new Date(payload.new.created_at);
+            const hazard = payload.new;
+            const hazardTime = new Date(hazard.created_at);
+  
             if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
-              setHazardMarkers((prev) => [...prev, payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string }]);
+              setHazardMarkers((prev) => [
+                ...prev,
+                {
+                  id: hazard.id,
+                  created_at: hazard.created_at,
+                  latitude: hazard.latitude,
+                  longitude: hazard.longitude,
+                  label: hazard.label,
+                  icon: hazard.icon,
+                },
+              ]);
+  
+              getUserLocation().then((coords) => {
+                if (!coords) return;
+  
+                const distance = getDistanceFromLatLonInMeters(
+                  coords.latitude,
+                  coords.longitude,
+                  hazard.latitude,
+                  hazard.longitude
+                );
+  
+                if (distance <= 100) {
+                  Notifications.scheduleNotificationAsync({
+                    content: {
+                      title: "🚨 Nearby Hazard Reported!",
+                      body: `A new hazard was reported ${Math.round(distance)}m from your location.`,
+                      sound: "default",
+                    },
+                    trigger: null,
+                  });
+                }
+              });
             }
           } else if (payload.eventType === 'UPDATE') {
             setHazardMarkers((prev) =>
               prev.map((hazard) =>
-                hazard.id === payload.new.id ? payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string } : hazard
+                hazard.id === payload.new.id
+                  ? (payload.new as { created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string })
+                  : hazard
               )
             );
           } else if (payload.eventType === 'DELETE') {
@@ -272,12 +342,12 @@ export default function TabOneScreen() {
         }
       )
       .subscribe();
-
+  
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
-
+  
 
   useEffect(() => {
     if (!destination || !userLocation) return;
