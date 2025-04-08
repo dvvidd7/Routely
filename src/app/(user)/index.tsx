@@ -19,6 +19,7 @@ import RecentSearch from '@/components/RecentSearch';
 import { useTransportModal } from '../TransportModalContext';
 import BusNavigation from '@/components/BusNavigation';
 import * as Notifications from 'expo-notifications';
+import { useNotification } from '@/providers/NotificationContext';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -75,6 +76,7 @@ export default function TabOneScreen() {
   const [routeVisible, setRouteVisible] = useState<boolean>(false);
   const [recentVisible, setRecentVisible] = useState<boolean>(true);
   const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
+  const { notification } = useNotification(); 
   const [routeIndex, setRouteIndex] = useState<number>(0);
   const [multipleStations, setMultipleStations] = useState<boolean>(false);
   const [hazardMarkers, setHazardMarkers] = useState<{
@@ -109,6 +111,7 @@ export default function TabOneScreen() {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
+  
 
    const getUserLocation = async () => {
           let { status } = await Location.requestForegroundPermissionsAsync();
@@ -182,6 +185,14 @@ export default function TabOneScreen() {
 
     fetchUserEmail();
   }, []);
+
+  useEffect(() => {
+    if (notification) {
+      console.log('Notifications are enabled');
+    } else {
+      console.log('Notifications are disabled');
+    }
+  }, [notification]);
 
   useEffect(() => {
     (async () => {
@@ -333,8 +344,10 @@ export default function TabOneScreen() {
                   hazard.latitude,
                   hazard.longitude
                 );
+
+                console.log("NOTIFICAREA:", notification)
   
-                if (distance <= 100) {
+                if (distance <= 100 && notification) {
                   Notifications.scheduleNotificationAsync({
                     content: {
                       title: "🚨 Nearby Hazard Reported!",
@@ -366,7 +379,7 @@ export default function TabOneScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [notification]);
   
 
   useEffect(() => {

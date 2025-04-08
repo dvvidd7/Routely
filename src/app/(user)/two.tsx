@@ -12,6 +12,7 @@ import { useGetPoints, useGetUsers, useUpdateTransport, useUpdateUser } from '@/
 import { useAuth } from '@/providers/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import LeaderboardUser from '@/components/LeaderboardUser';
+import { useNotification } from '@/providers/NotificationContext';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -36,6 +37,7 @@ export default function TabTwoScreen() {
   const { data: users, error: usersError } = useGetUsers();
   const { data: points, error } = useGetPoints();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const { notification, setNotification } = useNotification();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -240,6 +242,21 @@ export default function TabTwoScreen() {
                 onValueChange={toggleTheme}
                 value={isDarkMode}
               />
+            </View>
+            {/* <View style={styles.switchContainer}>
+              <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Dark Mode</Text>
+              <Switch
+                trackColor={{ false: '#767577', true: '#81b0ff' }}
+                thumbColor={isDarkMode ? '#f5dd4b' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                onValueChange={()=>setNotification(false)}
+                value={notification}
+              />
+            </View> */}
+            <View>
+              <Pressable onPress={()=>setNotification(false)} style={styles.logoutButton}>
+                <Text style={styles.logoutText}>notif</Text>
+              </Pressable>
             </View>
             <View>
               <Pressable onPress={handleLogout} style={styles.logoutButton}>
