@@ -51,8 +51,8 @@ export const useFetchSearches = () => {
 
             if (fetchError) throw new Error(fetchError.message);
 
-            if (allSearches.length > 3) {
-                const excessSearches = allSearches.slice(0, allSearches.length - 3); // Get the oldest entries
+            if (allSearches.length > 5) {
+                const excessSearches = allSearches.slice(0, allSearches.length - 5); // Get the oldest entries
                 const idsToDelete = excessSearches.map((search) => search.id); // Extract their IDs
 
                 const { error: deleteError } = await supabase
