@@ -1,6 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React from 'react'
 import { AntDesign, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@react-navigation/native';
+import {Divider} from 'react-native-paper';
+
 type Stop = {
     from: string;
     fromCoords: {
@@ -13,28 +16,44 @@ type Stop = {
     } 
     to: string; line: string; vehicle: string; departureTime?: string; arrivalTime?: string; headsign?: string
   }
-type Station = {
-    station: Stop,
+type Navigator = {
+    station: Stop[],
+    onCancel: () => void,
+    onIncrease: () => void,
+    onDecrease: () => void,
+    routeIndex: number,
 }
-const BusNavigation = ({station} : Station) => {
+const BusNavigation = ({station, onCancel, routeIndex, onIncrease, onDecrease} : Navigator) => {
+    const {dark} = useTheme();
     if(!station) return null;
   return (
     <View style={styles.container}>
-        <View>
+        <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={styles.title}>Bus Navigator</Text>
+            <TouchableOpacity style={styles.closeIconContainer} onPress={onDecrease}>
+                <FontAwesome style={styles.closeIcon} color='#0384fc' name='backward' size={15} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeIconContainer} onPress={onIncrease}>
+                <AntDesign style={styles.closeIcon} color='#0384fc' name='forward' size={15} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeIconContainer} onPress={onCancel}>
+                <MaterialCommunityIcons style={styles.closeIcon} color='#0384fc' name='close' size={15} />
+            </TouchableOpacity>
+            
         </View>
-        <View style={styles.smallContainer}>
+        <View style={{...styles.smallContainer, backgroundColor: dark ? 'black' : 'white'}}>
         <View>
             <MaterialCommunityIcons name='bus-marker' size={30} color={'#0384fc'} />
         </View>
         <View>
-            <Text style={styles.line}>Take bus line <Text style={styles.customInput}>{station.line}</Text></Text>
-            <Text style={styles.line}>From <Text style={styles.customInput}>{station.from}</Text></Text>
-            <Text style={styles.line}>To <Text style={styles.customInput}>{station.to}</Text></Text>
-        </View>
-        <View>
-            <Text style={styles.line}>Leaving at: <Text style={styles.customInput}>{station.departureTime}</Text></Text>
-            <Text style={styles.line}>Arriving at destination: <Text style={styles.customInput}>{station.arrivalTime}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Take bus line <Text style={styles.customInput}>{station[routeIndex].line}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>From <Text style={styles.customInput}>{station[routeIndex].from}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>To <Text style={styles.customInput}>{station[routeIndex].to}</Text></Text>
+            <Divider leftInset={true} style={{margin: 10}} />
+            <View style={{flexDirection: 'row'}}>
+                <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Leaving at: <Text style={styles.customInput}>{station[routeIndex].departureTime}</Text></Text>
+                <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Arriving at: <Text style={styles.customInput}>{station[routeIndex].arrivalTime}</Text></Text>
+            </View>
         </View>
         </View>
     </View>
@@ -70,17 +89,25 @@ const styles = StyleSheet.create({
     },
     line:{
         marginHorizontal: 15,
-        flexShrink: 1,
     },
     customInput:{
         color: '#0384fc',
-        fontWeight: '500',
-        flexShrink: 1,
+        fontWeight: '700',
     },
     title:{
         margin: 10,
         fontWeight: '500',
         color: 'white',
         fontSize: 20,
+    },
+    closeIconContainer: {
+        margin: 10,
+        padding: 5,
+        backgroundColor: '#cde6fe',
+        borderRadius: 30,
+        justifyContent: 'center'
+    },
+    closeIcon: {
+        color: '#0384fc',
     }
 })

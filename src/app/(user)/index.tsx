@@ -74,6 +74,7 @@ export default function TabOneScreen() {
   const [routeVisible, setRouteVisible] = useState<boolean>(false);
   const [recentVisible, setRecentVisible] = useState<boolean>(true);
   const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
+  const [routeIndex, setRouteIndex] = useState<number>(0);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -92,6 +93,14 @@ export default function TabOneScreen() {
   const openTransportModal = () => {
     setTransportModalVisible(true);
     setSearchVisible(true);
+  };
+  const handleRouteIndexIncrease = () => {
+    if(routeStops.length-1 <= routeIndex) return console.warn("Reached end of stations!");
+    setRouteIndex(routeIndex+1);
+  };
+  const handleRouteIndexDecrease = () => {
+    if(routeIndex <= 0) return console.warn("Reached end of stations!");
+    setRouteIndex(routeIndex-1);
   };
 
   const closeTransportModal = () => {
@@ -194,7 +203,6 @@ export default function TabOneScreen() {
         console.error("Error fetching travel time:", error);
       }
     };
-  
     getTravelTime();
   }, [userLocation, destination, GOOGLE_MAPS_PLACES_LEGACY]);
   
@@ -446,6 +454,7 @@ export default function TabOneScreen() {
       });
     }, 200);
     setRouteVisible(false);
+    setRouteIndex(0);
     setStationVisible(true);
     setBusNavVisible(true);
     setTransportModalVisible(false);
@@ -550,7 +559,7 @@ export default function TabOneScreen() {
                 key={rs.from}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor='#0384fc'
+                strokeColor={routeIndex === routeStops.indexOf(rs) ? '#0384fc' : 'gray'}
               />
             )}
             
@@ -572,10 +581,9 @@ export default function TabOneScreen() {
               <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
             </TouchableOpacity>
           )}
-
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-              <BusNavigation station={routeStops[0]} />
+              <BusNavigation onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => {setBusNavVisible(false); setTransportModalVisible(true)}} />
           )}
 
           {/* MY LOCATION BUTTON */}
@@ -647,7 +655,7 @@ export default function TabOneScreen() {
               <FlatList
               data={searches}
               keyboardShouldPersistTaps="handled"
-              renderItem={({item}) => <RecentSearch searchText={item.searchText} searchRef={searchRef}/>}
+              renderItem={({item}) => <RecentSearch onPress={()=>{setIsFocused(false);}} searchRef={searchRef} userSearch={item} />}
               contentContainerStyle={{gap: 5}}
               style={{position: "relative",top:170, left: 25}}
             />
