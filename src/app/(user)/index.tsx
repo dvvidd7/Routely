@@ -76,6 +76,7 @@ export default function TabOneScreen() {
   const [recentVisible, setRecentVisible] = useState<boolean>(true);
   const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
   const [routeIndex, setRouteIndex] = useState<number>(0);
+  const [multipleStations, setMultipleStations] = useState<boolean>(false);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -436,6 +437,7 @@ export default function TabOneScreen() {
       if(arrivalMinutes !== undefined && departureMinutes !== undefined){
         setEstimatedBus(arrivalMinutes - departureMinutes);
       }
+      setMultipleStations(false);
     }
     else if (routeStops.length > 1) {
       const arrivalMinutes = timeToMinutes(routeStops[routeStops.length - 1]?.arrivalTime);
@@ -443,6 +445,7 @@ export default function TabOneScreen() {
       if (arrivalMinutes !== undefined && departureMinutes !== undefined) {
         setEstimatedBus(arrivalMinutes - departureMinutes);
       }
+      setMultipleStations(true);
     }
   }, [routeStops]); 
 
@@ -529,6 +532,7 @@ export default function TabOneScreen() {
   };
 
   function handleBusSelection() {
+    if(routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
     setTimeout(() => {
       mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -664,7 +668,7 @@ export default function TabOneScreen() {
           )}
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-              <BusNavigation onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => {setBusNavVisible(false); setTransportModalVisible(true)}} />
+              <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => {setBusNavVisible(false); setTransportModalVisible(true)}} />
           )}
 
           {/* MY LOCATION BUTTON */}
@@ -703,7 +707,7 @@ export default function TabOneScreen() {
                   setRouteVisible(true);
                   openTransportModal();
                   setSearchVisible(false);
-                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: details.name });
+                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
                 }}
                 query={{
                   key: GOOGLE_MAPS_PLACES_LEGACY,

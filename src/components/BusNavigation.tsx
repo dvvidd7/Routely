@@ -22,20 +22,26 @@ type Navigator = {
     onIncrease: () => void,
     onDecrease: () => void,
     routeIndex: number,
+    multiple: boolean
 }
-const BusNavigation = ({station, onCancel, routeIndex, onIncrease, onDecrease} : Navigator) => {
+const BusNavigation = ({station, onCancel, routeIndex, onIncrease, onDecrease, multiple} : Navigator) => {
     const {dark} = useTheme();
     if(!station) return null;
   return (
     <View style={styles.container}>
         <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={styles.title}>Bus Navigator</Text>
+            {multiple && (
             <TouchableOpacity style={styles.closeIconContainer} onPress={onDecrease}>
                 <FontAwesome style={styles.closeIcon} color='#0384fc' name='backward' size={15} />
             </TouchableOpacity>
+            )}
+            {multiple && (
             <TouchableOpacity style={styles.closeIconContainer} onPress={onIncrease}>
                 <AntDesign style={styles.closeIcon} color='#0384fc' name='forward' size={15} />
             </TouchableOpacity>
+            )}
+
             <TouchableOpacity style={styles.closeIconContainer} onPress={onCancel}>
                 <MaterialCommunityIcons style={styles.closeIcon} color='#0384fc' name='close' size={15} />
             </TouchableOpacity>
