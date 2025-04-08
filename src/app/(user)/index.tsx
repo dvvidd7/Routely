@@ -17,6 +17,7 @@ import { useGetPoints, useUpdatePoints } from '@/api/profile';
 import { useQueryClient } from '@tanstack/react-query';
 import RecentSearch from '@/components/RecentSearch';
 import { useTransportModal } from '../TransportModalContext';
+import BusNavigation from '@/components/BusNavigation';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -71,6 +72,8 @@ export default function TabOneScreen() {
   const [stationVisible, setStationVisible] = useState<boolean>(false);
   const [searchVisible, setSearchVisible] = useState<boolean>(true);
   const [routeVisible, setRouteVisible] = useState<boolean>(false);
+  const [recentVisible, setRecentVisible] = useState<boolean>(true);
+  const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -436,8 +439,7 @@ export default function TabOneScreen() {
     setIsFocused(true);
   };
 
-  function handleTransportSelection() {
-    console.warn(routeStops[0].fromCoords.lat);
+  function handleBusSelection() {
     setTimeout(() => {
       mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
         edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -445,6 +447,8 @@ export default function TabOneScreen() {
     }, 200);
     setRouteVisible(false);
     setStationVisible(true);
+    setBusNavVisible(true);
+    setTransportModalVisible(false);
   }
   return (
     <View style={styles.container}>
@@ -569,6 +573,10 @@ export default function TabOneScreen() {
             </TouchableOpacity>
           )}
 
+          {/* BUS NAVIGATION */}
+          {routeStops.length > 0 && busNavVisible && (
+              <BusNavigation station={routeStops[0]} />
+          )}
 
           {/* MY LOCATION BUTTON */}
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
@@ -589,7 +597,7 @@ export default function TabOneScreen() {
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
-          <View> 
+          <View style={{flex: 1, backgroundColor: dark ? 'black' : 'white'}}> 
               {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
               <GooglePlacesAutocomplete
                 ref={searchRef}
@@ -627,20 +635,23 @@ export default function TabOneScreen() {
                 }}
                 textInputProps={{
                   autoFocus: true,
-                  onFocus: () => setIsFocused(true),
-                  onBlur: () => setIsFocused(false),
+                  onFocus: () => {setIsFocused(true);setRecentVisible(true)},
+                  onBlur: () => {setIsFocused(false); setRecentVisible(true)},
                   placeholderTextColor: dark ? 'white' : 'black',
+                  onChangeText: (text) => {text === '' ? setRecentVisible(true) : setRecentVisible(false)},
                 }}
                 debounce={300}
                 enablePoweredByContainer={false}
               />
+              {recentVisible && (
               <FlatList
-                data={searches}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({item}) => <RecentSearch searchText={item.searchText} searchRef={searchRef}/>}
-                contentContainerStyle={{gap: 5}}
-                style={{position: "relative",top:390, left: 25}}
-              />
+              data={searches}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({item}) => <RecentSearch searchText={item.searchText} searchRef={searchRef}/>}
+              contentContainerStyle={{gap: 5}}
+              style={{position: "relative",top:170, left: 25}}
+            />
+              )}
             </View>
           </Modal>
 
@@ -661,8 +672,6 @@ export default function TabOneScreen() {
               </View>
             </View>
           </Modal>
-
-          {/* Transport Selection Modal */}
 {/* Transport Selection Panel (Replaces Modal) */}
 {transportModalVisible && (
   <View style={{
@@ -688,7 +697,7 @@ export default function TabOneScreen() {
     {/* Bus Option */}
     <TouchableOpacity
       style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
-      onPress={() => handleTransportSelection()}
+      onPress={() => handleBusSelection()}
     >
       <View style={styles.rideDetails}>
         <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚌</Text>
@@ -785,6 +794,8 @@ const styles = StyleSheet.create({
     height: 60,
     width: '90%',
     zIndex: 10,
+    elevation: 15,
+    shadowRadius: 10,
   },
   inputIcon: {
     marginLeft: 15,
@@ -942,6 +953,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+  busNavContainer:{    
+    position: "absolute",
+    top: 200,
+    marginHorizontal: 20,
+    marginVertical: 90,
+    alignItems: 'center',
+    width: '90%',
+    zIndex: 10,
+    elevation: 15,
+    shadowRadius: 10,}
 });
 
 function setRideInfo(arg0: {
