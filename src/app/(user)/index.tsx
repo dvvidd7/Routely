@@ -223,9 +223,9 @@ export default function TabOneScreen() {
               longitude
             );
 
-            if (distance > 10) { // Threshold for movement (10 meters)
-              console.log('User moved:', distance, 'meters');
-            }
+            // if (distance > 10) { // Threshold for movement (10 meters)
+            //   console.log('User moved:', distance, 'meters');
+            // }
           }
 
           // Update the previous location
@@ -773,20 +773,33 @@ export default function TabOneScreen() {
                 coordinate={{ latitude: hazard.latitude, longitude: hazard.longitude }}
                 title={hazard.label}
                 description={`Reported at ${new Date(hazard.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                icon={hazard.icon === '🚗💥' ? require('../../../assets/images/accident.png') : 
-                  (hazard.icon === '🚦' ?  require('../../../assets/images/trafficjam.png') : 
-                  (hazard.icon === '🚧' ? require('../../../assets/images/roadblock.png') : 
-                  ((hazard.icon === '🌧️' ? require('../../../assets/images/weather.png') : null)
-                )
-                )
-                )
-                }
               >
-              {Platform.OS === 'ios' && (
+              {hazard.icon === '🚗💥' && (
                   <Image
-                  source={require('../../../assets/images/accident.png')}
-                  style={{ width: 40, height: 40 }}
-                  resizeMode="contain"
+                  source={require(`../../../assets/images/accident.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              )}
+              {hazard.icon === '🚦' && (
+                  <Image
+                  source={require(`../../../assets/images/trafficjam.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              )}
+              {hazard.icon === '🚧' && (
+                  <Image
+                  source={require(`../../../assets/images/roadblock.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              )}
+              {hazard.icon === '🌧️' && (
+                  <Image
+                  source={require(`../../../assets/images/weather.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
                 />
               )}
               </Marker>
