@@ -138,7 +138,7 @@ export default function TabTwoScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable style={{ ...styles.viewLeader, backgroundColor: 'transparent' }} onPress={() => setModalVisible(true)}>
           <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
-          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color:dark ? 'white' : 'black' }}>View Leaderboard</Text>
+          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
@@ -163,7 +163,7 @@ export default function TabTwoScreen() {
             </Text>
           </View>
 
-          <FlatList 
+          <FlatList
             style={{ marginTop: 25 }}
             data={users}
             renderItem={({ item, index }) => {
@@ -236,18 +236,22 @@ export default function TabTwoScreen() {
             <View style={styles.switchContainer}>
               <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Dark Mode</Text>
               <Switch
-                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                thumbColor={isDarkMode ? '#f5dd4b' : '#f4f3f4'}
+                trackColor={{ false: '#767577', true: '#0384fc' }}
+                thumbColor={isDarkMode ? '#f4f3f4' : '#f4f3f4'}
                 ios_backgroundColor="#3e3e3e"
                 onValueChange={toggleTheme}
                 value={isDarkMode}
               />
             </View>
-
-            <View>
-              <Pressable onPress={()=>setNotification(!notification)} style={styles.logoutButton}>
-                <Text style={styles.logoutText}>notif</Text>
-              </Pressable>
+            <View style={styles.notificationSwitchContainer}>
+              <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Notifications</Text>
+              <Switch
+                trackColor={{ false: '#767577', true: '#0384fc' }}
+                thumbColor={notification ? '#f4f3f4' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                onValueChange={(value) => setNotification(value)} // Toggle the notification state
+                value={notification} // Bind the state to the Switch
+              />
             </View>
             <View>
               <Pressable onPress={handleLogout} style={styles.logoutButton}>
@@ -399,7 +403,13 @@ const styles = StyleSheet.create({
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 100,
+    marginBottom: 40,
+    alignSelf: 'center',
+  },
+  notificationSwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 60,
     alignSelf: 'center',
   },
   switchText: {
