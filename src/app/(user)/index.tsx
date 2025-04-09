@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking } from 'react-native';
+import { Image,StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
@@ -111,8 +111,6 @@ export default function TabOneScreen() {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
-  
-
    const getUserLocation = async () => {
           let { status } = await Location.requestForegroundPermissionsAsync();
           if (status !== 'granted') {
@@ -173,6 +171,54 @@ export default function TabOneScreen() {
       }
     });
   };
+  const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  useEffect(() => {
+    const startTracking = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to track movement.');
+        return;
+      }
+
+      // Start watching the user's location
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 1000, // Check every 1 second
+          distanceInterval: 10, // Minimum distance change in meters
+        },
+        (location) => {
+          const { latitude, longitude } = location.coords;
+
+          // Update the current location
+          setUserLocation({ latitude, longitude });
+
+          // Compare with the previous location
+          if (previousLocation) {
+            const distance = getDistanceFromLatLonInMeters(
+              previousLocation.latitude,
+              previousLocation.longitude,
+              latitude,
+              longitude
+            );
+
+            if (distance > 10) { // Threshold for movement (10 meters)
+              console.log('User moved:', distance, 'meters');
+            }
+          }
+
+          // Update the previous location
+          setPreviousLocation({ latitude, longitude });
+        }
+      );
+
+      return () => {
+        subscription.remove(); // Stop watching when the component unmounts
+      };
+    };
+
+    startTracking();
+  }, [previousLocation]);
   useEffect(() => {
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -667,8 +713,22 @@ export default function TabOneScreen() {
                 coordinate={{ latitude: hazard.latitude, longitude: hazard.longitude }}
                 title={hazard.label}
                 description={`Reported at ${new Date(hazard.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                icon={hazard.icon === '🚗💥' ? require('../../../assets/images/accident.png') : 
+                  (hazard.icon === '🚦' ?  require('../../../assets/images/trafficjam.png') : 
+                  (hazard.icon === '🚧' ? require('../../../assets/images/roadblock.png') : 
+                  ((hazard.icon === '🌧️' ? require('../../../assets/images/weather.png') : null)
+                )
+                )
+                )
+                }
               >
-                <Text style={{ fontSize: 20 }}>{hazard.icon}</Text>
+              {Platform.OS === 'ios' && (
+                  <Image
+                  source={require('../../../assets/images/accident.png')}
+                  style={{ width: 40, height: 40 }}
+                  resizeMode="contain"
+                />
+              )}
               </Marker>
             ))}
           </MapView>
