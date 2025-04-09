@@ -243,16 +243,7 @@ export default function TabTwoScreen() {
                 value={isDarkMode}
               />
             </View>
-            {/* <View style={styles.switchContainer}>
-              <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Dark Mode</Text>
-              <Switch
-                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                thumbColor={isDarkMode ? '#f5dd4b' : '#f4f3f4'}
-                ios_backgroundColor="#3e3e3e"
-                onValueChange={()=>setNotification(false)}
-                value={notification}
-              />
-            </View> */}
+
             <View>
               <Pressable onPress={()=>setNotification(!notification)} style={styles.logoutButton}>
                 <Text style={styles.logoutText}>notif</Text>
