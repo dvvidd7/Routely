@@ -230,7 +230,7 @@ export default function TabTwoScreen() {
               onFocus={() => setIsFocus(true)}
               onBlur={() => setIsFocus(false)}
               onChange={item => {
-                updateTransport({ fav_transport: item.value });
+                updateTransport({ fav_transport: item.value});
                 setTransport(transport);
                 setIsFocus(false);
               }}

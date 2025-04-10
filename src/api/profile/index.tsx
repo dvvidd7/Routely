@@ -19,6 +19,7 @@ export const useUpdateUser = () => {
 };
 export const useUpdateTransport = () => {
     const {session} = useAuth();
+
     return useMutation({
         async mutationFn(data: any){
             const { data:favTrans, error } = await supabase

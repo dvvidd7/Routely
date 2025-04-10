@@ -66,7 +66,7 @@ export default function SignIn() {
     }
 
     useEffect(() => {
-        const unsubscribe = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (event === "PASSWORD_RECOVERY") {
             const newPassword = prompt("What would you like your new password to be?");
             if (newPassword) {
@@ -82,8 +82,9 @@ export default function SignIn() {
         });
       
         return () => {
-          unsubscribe(); // Call the returned function directly
+          subscription.unsubscribe(); // Call the unsubscribe method
         };
+        
       }, []);
 
   return (
