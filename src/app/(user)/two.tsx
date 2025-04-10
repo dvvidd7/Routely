@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   notificationSwitchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 60,
+    marginBottom: 45,
     alignSelf: 'center',
   },
   switchText: {
