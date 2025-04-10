@@ -759,8 +759,12 @@ export default function TabOneScreen() {
                 identifier='departure'
                 title={`Departure number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.from}
-                icon={require('../../../assets/images/busiconPS.png')}
               >
+                  <Image
+                  source={require(`../../../assets/images/busiconPS.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
               </Marker>
             )}
             {stationVisible && routeStops.map((rs) =>
@@ -772,11 +776,12 @@ export default function TabOneScreen() {
                 identifier='arrival'
                 title={`Destination number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.to}
-                icon={require('../../../assets/images/busiconPS.png')}
               >
-                {/* <View style={{ transform: [{ scale: 1 / (mapRef.current?.getCamera()?.zoom || 1) }] }}>
-                <FontAwesome name="bus" size={30} />
-              </View> */}
+                  <Image
+                  source={require(`../../../assets/images/busiconPS.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
               </Marker>
 
             )}

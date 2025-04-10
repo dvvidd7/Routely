@@ -419,14 +419,14 @@ const styles = StyleSheet.create({
   logoutButton: {
     backgroundColor: 'transparent',
     padding: 1,
-    width: 65,
+    width: 100,
     alignItems: 'center',
     alignSelf: 'center',
   },
   feedbackButton: {
     backgroundColor: 'transparent',
     padding: 1,
-    width: 80,                                ////////////////////////
+    width: 100,
     alignItems: 'center',
     alignSelf: 'center',
   },

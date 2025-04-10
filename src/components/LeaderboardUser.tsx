@@ -27,10 +27,10 @@ export default function LeaderboardUser ({userN, index}:Profile){
     )
   }
   return (
-    <View style={styles.container}>
+      <View style={{...styles.container, backgroundColor: dark ? '#262626' : '#e6e6e6'}}>
       <View style={styles.user}>
-        <Text style={styles.userText}>{userN.username}</Text>
-        <Text>Rank</Text>
+        <Text style={{...styles.userText, color: dark ? '#e6e6e6' : 'black'}}><Text style={{color: dark ? 'white' : 'black'}}>#{index+1} </Text>{userN.username}</Text>
+        {/* <Text>Rank</Text> */}
       </View>
       <Text style={styles.points}>{userN.points}</Text>
     </View>
