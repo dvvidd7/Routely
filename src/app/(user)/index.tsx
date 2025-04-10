@@ -69,7 +69,7 @@ export default function TabOneScreen() {
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
   const { data: searches, error: searchError } = useFetchSearches();
-  const [estimatedBus, setEstimatedBus] = useState<number | null | string>(null);
+  const [estimatedBus, setEstimatedBus] = useState<number | string | null>(null);
   const [routeStops, setRouteStops] = useState<Stop[]>([]);
   const [stationVisible, setStationVisible] = useState<boolean>(false);
   const [searchVisible, setSearchVisible] = useState<boolean>(true);
@@ -160,10 +160,10 @@ export default function TabOneScreen() {
 
   const awardPoints = async () => {
     if (!userEmail) return;
-    updatePoints({ points: 5 });
+    updatePoints({ points: 10 });
 
-    Alert.alert("Bus trip ended", `You earned 5 points`);
-    console.log('5 points awarded!');
+    Alert.alert("Bus trip ended", `You earned 10 points`);
+    console.log('10 points awarded!');
     setRouteVisible(false);
     setRouteIndex(0);
     setStationVisible(false);
@@ -429,7 +429,7 @@ export default function TabOneScreen() {
         { event: '*', schema: 'public', table: 'hazards' },
         (payload) => {
           console.log('Change received!', payload);
-          updatePoints({ points: 1 });
+          updatePoints({ points: 5 });
           const now = new Date();
 
           if (payload.eventType === 'INSERT') {
@@ -572,9 +572,7 @@ export default function TabOneScreen() {
       }
       setMultipleStations(true);
     }
-    else{
-      setEstimatedBus('-');
-    }
+    else setEstimatedBus('-');
   }, [routeStops]);
 
   const handleMyLocationPress = async () => {
@@ -612,6 +610,30 @@ export default function TabOneScreen() {
       return;
     }
 
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    console.log("Checking for recent hazards since:", thirtyMinutesAgo);
+
+    const { data: recentHazards, error: queryError } = await supabase
+    .from("hazards")
+    .select("*")
+    .eq("email", userEmail)
+    .gt("created_at", thirtyMinutesAgo);
+  
+  if (queryError) {
+    console.error("Error checking recent hazards:", queryError);
+    Alert.alert("Error", "Couldn't verify report limit.");
+    return;
+  }
+
+  console.log("Recent hazards:", recentHazards);
+
+  // ✅ Check if the user has reached the 5 report limit
+  if (recentHazards.length >= 5) {
+    console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
+    Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
+    return;
+  }
+
     const newHazard = {
       latitude: userLocation.latitude,
       longitude: userLocation.longitude,
@@ -632,7 +654,7 @@ export default function TabOneScreen() {
       }
 
       setHazardMarkers((prev) => [...prev, { id: Date.now(), ...newHazard }]);
-      Alert.alert("Hazard Reported", `You selected: ${hazard.label}. You won 1 point`);
+      Alert.alert("Hazard Reported", `You selected: ${hazard.label}. You won 5 point`);
       setModalVisible(false);
     } catch (error) {
       console.error("Unexpected error saving hazard:", error);
@@ -737,13 +759,8 @@ export default function TabOneScreen() {
                 identifier='departure'
                 title={`Departure number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.from}
-                // icon={require('../../../assets/images/busiconPS.png')}
+                icon={require('../../../assets/images/busiconPS.png')}
               >
-                  <Image
-                  source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
               </Marker>
             )}
             {stationVisible && routeStops.map((rs) =>
@@ -757,11 +774,9 @@ export default function TabOneScreen() {
                 description={rs.to}
                 icon={require('../../../assets/images/busiconPS.png')}
               >
-                  <Image
-                  source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
+                {/* <View style={{ transform: [{ scale: 1 / (mapRef.current?.getCamera()?.zoom || 1) }] }}>
+                <FontAwesome name="bus" size={30} />
+              </View> */}
               </Marker>
 
             )}
@@ -793,7 +808,7 @@ export default function TabOneScreen() {
               {hazard.icon === '🚗💥' && (
                   <Image
                   source={require(`../../../assets/images/accident.png`)}
-                  style={{ width: 80, height: 80 }}
+                  style={{ width: 70, height: 70 }}
                   resizeMode='center'
                 />
               )}
@@ -1050,8 +1065,8 @@ const styles = StyleSheet.create({
     width: '90%',
     zIndex: 10,
     elevation: 15,
-    shadowRadius: 10,
-    shadowOpacity: 3,
+    shadowRadius: 5,
+    shadowOpacity: 2,
   },
   inputIcon: {
     marginLeft: 15,
