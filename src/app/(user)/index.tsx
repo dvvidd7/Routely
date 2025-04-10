@@ -192,54 +192,54 @@ export default function TabOneScreen() {
       }
     });
   };
-  const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  useEffect(() => {
-    const startTracking = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to track movement.');
-        return;
-      }
+  // const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  // useEffect(() => {
+  //   const startTracking = async () => {
+  //     const { status } = await Location.requestForegroundPermissionsAsync();
+  //     if (status !== 'granted') {
+  //       Alert.alert('Permission Denied', 'Location permission is required to track movement.');
+  //       return;
+  //     }
 
-      // Start watching the user's location
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 1000, // Check every 1 second
-          distanceInterval: 10, // Minimum distance change in meters
-        },
-        (location) => {
-          const { latitude, longitude } = location.coords;
+  //     // Start watching the user's location
+  //     const subscription = await Location.watchPositionAsync(
+  //       {
+  //         accuracy: Location.Accuracy.High,
+  //         timeInterval: 1000, // Check every 1 second
+  //         distanceInterval: 10, // Minimum distance change in meters
+  //       },
+  //       (location) => {
+  //         const { latitude, longitude } = location.coords;
 
-          // Update the current location
-          setUserLocation({ latitude, longitude });
+  //         // Update the current location
+  //         setUserLocation({ latitude, longitude });
 
-          // Compare with the previous location
-          if (previousLocation) {
-            const distance = getDistanceFromLatLonInMeters(
-              previousLocation.latitude,
-              previousLocation.longitude,
-              latitude,
-              longitude
-            );
+  //         // Compare with the previous location
+  //         if (previousLocation) {
+  //           const distance = getDistanceFromLatLonInMeters(
+  //             previousLocation.latitude,
+  //             previousLocation.longitude,
+  //             latitude,
+  //             longitude
+  //           );
 
-            // if (distance > 10) { // Threshold for movement (10 meters)
-            //   console.log('User moved:', distance, 'meters');
-            // }
-          }
+  //           // if (distance > 10) { // Threshold for movement (10 meters)
+  //           //   console.log('User moved:', distance, 'meters');
+  //           // }
+  //         }
 
-          // Update the previous location
-          setPreviousLocation({ latitude, longitude });
-        }
-      );
+  //         // Update the previous location
+  //         setPreviousLocation({ latitude, longitude });
+  //       }
+  //     );
 
-      return () => {
-        subscription.remove(); // Stop watching when the component unmounts
-      };
-    };
+  //     return () => {
+  //       subscription.remove(); // Stop watching when the component unmounts
+  //     };
+  //   };
 
-    startTracking();
-  }, [previousLocation]);
+  //   startTracking();
+  // }, [previousLocation]);
   useEffect(() => {
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
