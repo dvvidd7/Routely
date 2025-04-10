@@ -228,7 +228,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     bottom: 120,
-    right: 100
+    right: 100,
+    alignItems:'center'
   },
   userText:{
     fontWeight: '500',
@@ -338,7 +339,7 @@ const styles = StyleSheet.create({
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 130,
+    marginBottom: 90,
     alignSelf: 'center',
   },
   switchText: {
