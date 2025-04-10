@@ -192,54 +192,61 @@ export default function TabOneScreen() {
       }
     });
   };
-  // const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  // useEffect(() => {
-  //   const startTracking = async () => {
-  //     const { status } = await Location.requestForegroundPermissionsAsync();
-  //     if (status !== 'granted') {
-  //       Alert.alert('Permission Denied', 'Location permission is required to track movement.');
-  //       return;
-  //     }
+  const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  useEffect(() => {
+    const startTracking = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to track movement.');
+        return;
+      }
 
-  //     // Start watching the user's location
-  //     const subscription = await Location.watchPositionAsync(
-  //       {
-  //         accuracy: Location.Accuracy.High,
-  //         timeInterval: 1000, // Check every 1 second
-  //         distanceInterval: 10, // Minimum distance change in meters
-  //       },
-  //       (location) => {
-  //         const { latitude, longitude } = location.coords;
+      // Start watching the user's location
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000, // Check every 1 second
+          distanceInterval: 1, // Minimum distance change in meters
+        },
+        (location) => {
+          const { latitude, longitude } = location.coords;
 
-  //         // Update the current location
-  //         setUserLocation({ latitude, longitude });
+          // Update the current location
+          
 
-  //         // Compare with the previous location
-  //         if (previousLocation) {
-  //           const distance = getDistanceFromLatLonInMeters(
-  //             previousLocation.latitude,
-  //             previousLocation.longitude,
-  //             latitude,
-  //             longitude
-  //           );
+          // Compare with the previous location
+          if (previousLocation) {
+            const distance = getDistanceFromLatLonInMeters(
+              previousLocation.latitude,
+              previousLocation.longitude,
+              latitude,
+              longitude
+            );
+            if(distance < 10){
+              return;
+            }
+            if (distance > 10) { // Threshold for movement (10 meters)
+              // console.log('User moved:', distance, 'meters');
+              // console.warn(previousLocation, ' + ', latitude, longitude );
+              const distance = getDistanceFromLatLonInMeters(44.1765368, 28.6517479, 44.1765368, 28.6517479);
+              console.warn('Distance (should be 0):', distance);
+            }
+            //else return;
+          }
 
-  //           // if (distance > 10) { // Threshold for movement (10 meters)
-  //           //   console.log('User moved:', distance, 'meters');
-  //           // }
-  //         }
+          // Update the previous location
+          setUserLocation({ latitude, longitude });
+          setPreviousLocation({ latitude, longitude });
+        }
+      );
 
-  //         // Update the previous location
-  //         setPreviousLocation({ latitude, longitude });
-  //       }
-  //     );
+      return () => {
+        subscription.remove(); // Stop watching when the component unmounts
+      };
+    };
 
-  //     return () => {
-  //       subscription.remove(); // Stop watching when the component unmounts
-  //     };
-  //   };
-
-  //   startTracking();
-  // }, [previousLocation]);
+    startTracking();
+  }, [previousLocation]);
   useEffect(() => {
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -728,8 +735,13 @@ export default function TabOneScreen() {
                 identifier='departure'
                 title={`Departure number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.from}
-                icon={require('../../../assets/images/busiconPS.png')}
+                // icon={require('../../../assets/images/busiconPS.png')}
               >
+                  <Image
+                  source={require(`../../../assets/images/busiconPS.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
               </Marker>
             )}
             {stationVisible && routeStops.map((rs) =>
@@ -743,9 +755,11 @@ export default function TabOneScreen() {
                 description={rs.to}
                 icon={require('../../../assets/images/busiconPS.png')}
               >
-                {/* <View style={{ transform: [{ scale: 1 / (mapRef.current?.getCamera()?.zoom || 1) }] }}>
-                <FontAwesome name="bus" size={30} />
-              </View> */}
+                  <Image
+                  source={require(`../../../assets/images/busiconPS.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
               </Marker>
 
             )}
@@ -1035,6 +1049,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 15,
     shadowRadius: 10,
+    shadowOpacity: 3,
   },
   inputIcon: {
     marginLeft: 15,
