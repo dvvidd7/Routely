@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useTheme } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
+import { useEffect } from 'react';
 
 //SCHIMB ECRANUL CU ROUTER NU CU LINK LA CREATE ACCOUNT!
 
@@ -20,10 +21,29 @@ export default function SignIn() {
     const router = useRouter();
     const os = Platform.OS;
     const [loading, setLoading] = useState(false);
-    const forgotPass = () => {
-        //De refacut la baza de date:
-        Alert.alert("Forgot password?", "You will receive an email with a password reset link.")
-    }
+
+    const forgotPass = async () => {
+        if (!email) {
+          Alert.alert("Error", "Please enter your email address.");
+          return;
+        }
+      
+        try {
+          const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+          if (error) {
+            Alert.alert("Error", error.message);
+          } else {
+            Alert.alert(
+              "Success",
+              "A password reset link has been sent to your email address."
+            );
+          }
+        } catch (err) {
+          console.error("Error sending password reset email:", err);
+          Alert.alert("Error", "An unexpected error occurred. Please try again.");
+        }
+      };
     // const onSignIn = () => {
     //     console.log(`Sign in detected: ${email} ${password} `);
     //     resetFields();
@@ -44,6 +64,27 @@ export default function SignIn() {
             router.push('../(user)');
         }
     }
+
+    useEffect(() => {
+        const unsubscribe = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === "PASSWORD_RECOVERY") {
+            const newPassword = prompt("What would you like your new password to be?");
+            if (newPassword) {
+              const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+              if (data) {
+                Alert.alert("Success", "Password updated successfully!");
+              }
+              if (error) {
+                Alert.alert("Error", "There was an error updating your password.");
+              }
+            }
+          }
+        });
+      
+        return () => {
+          unsubscribe(); // Call the returned function directly
+        };
+      }, []);
 
   return (
 
