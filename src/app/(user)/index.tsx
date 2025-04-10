@@ -69,7 +69,7 @@ export default function TabOneScreen() {
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
   const { data: searches, error: searchError } = useFetchSearches();
-  const [estimatedBus, setEstimatedBus] = useState<number | null>(null);
+  const [estimatedBus, setEstimatedBus] = useState<number | null | string>(null);
   const [routeStops, setRouteStops] = useState<Stop[]>([]);
   const [stationVisible, setStationVisible] = useState<boolean>(false);
   const [searchVisible, setSearchVisible] = useState<boolean>(true);
@@ -110,56 +110,6 @@ export default function TabOneScreen() {
   const closeTransportModal = () => {
     setTransportModalVisible(false);
     setSearchVisible(false);
-  };
-  const reportHazard = async (hazardData: { label: string; latitude: number; longitude: number }) => {
-    if (!userEmail) {
-      Alert.alert("Error", "You must be logged in to report a hazard.");
-      return;
-    }
-  
-    try {
-      const now = new Date();
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-  
-      // Fetch the user's reports in the last 30 minutes
-      const { data: recentReports, error: fetchError } = await supabase
-        .from('hazards')
-        .select('id') // no need to count manually
-        .eq('email', userEmail)
-        .gte('created_at', thirtyMinutesAgo);
-  
-      if (fetchError) {
-        console.error("Error fetching recent hazard reports:", fetchError.message);
-        return;
-      }
-  
-      const reportCount = recentReports?.length || 0;
-  
-      if (reportCount >= 5) {
-        Alert.alert("Limit Reached", "You can only report up to 5 hazards every 30 minutes. Please wait before reporting more.");
-        return;
-      }
-  
-      // Submit the new hazard report
-      const { error: insertError } = await supabase
-        .from('hazards')
-        .insert({
-          label: hazardData.label,
-          latitude: hazardData.latitude,
-          longitude: hazardData.longitude,
-          email: userEmail,
-          created_at: now.toISOString(),
-        });
-  
-      if (insertError) {
-        console.error("Error reporting hazard:", insertError.message);
-        return;
-      }
-  
-      Alert.alert("Success", "Hazard reported successfully!");
-    } catch (err) {
-      console.error("Unexpected error:", err);
-    }
   };
    const getUserLocation = async () => {
           let { status } = await Location.requestForegroundPermissionsAsync();
@@ -254,9 +204,9 @@ export default function TabOneScreen() {
       // Start watching the user's location
       const subscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.BestForNavigation,
+          accuracy: Location.Accuracy.High,
           timeInterval: 1000, // Check every 1 second
-          distanceInterval: 1, // Minimum distance change in meters
+          distanceInterval: 20, // Minimum distance change in meters
         },
         (location) => {
           const { latitude, longitude } = location.coords;
@@ -272,14 +222,13 @@ export default function TabOneScreen() {
               latitude,
               longitude
             );
-            if(distance < 10){
+            if(distance < 50){
               return;
             }
-            if (distance > 10) { // Threshold for movement (10 meters)
+            if (distance > 50) { // Threshold for movement (10 meters)
               // console.log('User moved:', distance, 'meters');
               // console.warn(previousLocation, ' + ', latitude, longitude );
-              const distance = getDistanceFromLatLonInMeters(44.1765368, 28.6517479, 44.1765368, 28.6517479);
-              console.warn('Distance (should be 0):', distance);
+              console.warn(distance);
             }
             //else return;
           }
@@ -623,6 +572,9 @@ export default function TabOneScreen() {
       }
       setMultipleStations(true);
     }
+    else{
+      setEstimatedBus('-');
+    }
   }, [routeStops]);
 
   const handleMyLocationPress = async () => {
@@ -659,32 +611,6 @@ export default function TabOneScreen() {
       Alert.alert("Error", "You must be logged in to report a hazard.");
       return;
     }
-
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    console.log("Checking for recent hazards since:", thirtyMinutesAgo);
-
-    const { data: recentHazards, error: queryError } = await supabase
-    .from("hazards")
-    .select("*")
-    .eq("email", userEmail)
-    .gt("created_at", thirtyMinutesAgo);
-  
-  if (queryError) {
-    console.error("Error checking recent hazards:", queryError);
-    Alert.alert("Error", "Couldn't verify report limit.");
-    setIsSubmitting(false);
-    return;
-  }
-
-  console.log("Recent hazards:", recentHazards);
-
-  // ✅ Check if the user has reached the 5 report limit
-  if (recentHazards.length >= 5) {
-    console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
-    Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
-    setIsSubmitting(false);
-    return;
-  }
 
     const newHazard = {
       latitude: userLocation.latitude,
