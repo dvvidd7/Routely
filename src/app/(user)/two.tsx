@@ -287,7 +287,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     bottom: 50,
-    right: 100
+    right: 100,
+    alignItems:'center'
   },
   adminText:{
     fontWeight: '500',
