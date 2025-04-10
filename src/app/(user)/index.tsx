@@ -111,6 +111,56 @@ export default function TabOneScreen() {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
+  const reportHazard = async (hazardData: { label: string; latitude: number; longitude: number }) => {
+    if (!userEmail) {
+      Alert.alert("Error", "You must be logged in to report a hazard.");
+      return;
+    }
+  
+    try {
+      const now = new Date();
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+  
+      // Fetch the user's reports in the last 30 minutes
+      const { data: recentReports, error: fetchError } = await supabase
+        .from('hazards')
+        .select('id') // no need to count manually
+        .eq('email', userEmail)
+        .gte('created_at', thirtyMinutesAgo);
+  
+      if (fetchError) {
+        console.error("Error fetching recent hazard reports:", fetchError.message);
+        return;
+      }
+  
+      const reportCount = recentReports?.length || 0;
+  
+      if (reportCount >= 5) {
+        Alert.alert("Limit Reached", "You can only report up to 5 hazards every 30 minutes. Please wait before reporting more.");
+        return;
+      }
+  
+      // Submit the new hazard report
+      const { error: insertError } = await supabase
+        .from('hazards')
+        .insert({
+          label: hazardData.label,
+          latitude: hazardData.latitude,
+          longitude: hazardData.longitude,
+          email: userEmail,
+          created_at: now.toISOString(),
+        });
+  
+      if (insertError) {
+        console.error("Error reporting hazard:", insertError.message);
+        return;
+      }
+  
+      Alert.alert("Success", "Hazard reported successfully!");
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  };
    const getUserLocation = async () => {
           let { status } = await Location.requestForegroundPermissionsAsync();
           if (status !== 'granted') {
@@ -609,6 +659,32 @@ export default function TabOneScreen() {
       Alert.alert("Error", "You must be logged in to report a hazard.");
       return;
     }
+
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    console.log("Checking for recent hazards since:", thirtyMinutesAgo);
+
+    const { data: recentHazards, error: queryError } = await supabase
+    .from("hazards")
+    .select("*")
+    .eq("email", userEmail)
+    .gt("created_at", thirtyMinutesAgo);
+  
+  if (queryError) {
+    console.error("Error checking recent hazards:", queryError);
+    Alert.alert("Error", "Couldn't verify report limit.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  console.log("Recent hazards:", recentHazards);
+
+  // ✅ Check if the user has reached the 5 report limit
+  if (recentHazards.length >= 5) {
+    console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
+    Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
+    setIsSubmitting(false);
+    return;
+  }
 
     const newHazard = {
       latitude: userLocation.latitude,
