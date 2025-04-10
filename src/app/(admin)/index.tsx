@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal } from 'react-native';
+import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal, Linking } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
+import BusNavigation from '@/components/BusNavigation';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -25,7 +26,21 @@ type Hazard = {
   label: string;
   icon: string;
 };
-
+type Station = {
+  transit_details: { departure_stop: { name: any; location: { lat: any; lng: any; }; }; arrival_stop: { name: any; location: { lat: any; lng: any; }; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; };
+}
+type Stop = {
+  from: string;
+  fromCoords: {
+    lat: any;
+    lng: any;
+  }
+  toCoords: {
+    lat: any;
+    lng: any;
+  }
+  to: string; line: string; vehicle: string; departureTime?: string; arrivalTime?: string; headsign?: string
+}
 const hazards: Hazard[] = [
   { id: 1, label: "Accident", icon: "🚗💥" },
   { id: 2, label: "Traffic Jam", icon: "🚦" },
@@ -50,6 +65,16 @@ export default function TabOneScreen() {
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
   const destination = useSelector(selectDestination);
+  const [routeStops, setRouteStops] = useState<Stop[]>([]);
+  const [routeIndex, setRouteIndex] = useState<number>(0);
+  const [multipleStations, setMultipleStations] = useState<boolean>(false);
+  const [routeVisible, setRouteVisible] = useState<boolean>(false);
+  const [recentVisible, setRecentVisible] = useState<boolean>(true);
+  const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
+  const [estimatedBus, setEstimatedBus] = useState<number | string | null>(null);
+  const [stationVisible, setStationVisible] = useState<boolean>(false);
+
+
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -74,7 +99,86 @@ export default function TabOneScreen() {
     };
     fetchUserEmail();
   }, []);
+    useEffect(() => {
+      if (!destination || !userLocation) return;
+  
+      setTimeout(() => {
+        mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+          edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+        });
+      }, 200);
+  
+      const fetchTransitRoute = async () => {
+        try {
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+          );
+          const data = await response.json();
+          if (!data.routes || data.routes.length === 0) {
+            console.warn("No transit routes found.");
+            setRouteStops([]);
+            return;
+          }
+          const steps = data.routes[0].legs[0].steps.filter(
+            (step: { travel_mode: string; }) => step.travel_mode === "TRANSIT"
+          );
+  
+          const routeStations = steps.map((step: Station) => ({
+            from: step.transit_details?.departure_stop?.name || "Unknown stop",
+            to: step.transit_details?.arrival_stop?.name || "Unknown stop",
+            fromCoords: {
+              lat: step.transit_details.departure_stop.location.lat,
+              lng: step.transit_details.departure_stop.location.lng,
+            },
+            toCoords: {
+              lat: step.transit_details.arrival_stop.location.lat,
+              lng: step.transit_details.arrival_stop.location.lng,
+            },
+            line: step.transit_details?.line?.short_name || "N/A",
+            vehicle: step.transit_details?.line?.vehicle?.type || "Transit",
+            departureTime: step.transit_details?.departure_time?.text,
+            arrivalTime: step.transit_details?.arrival_time?.text,
+            headsign: step.transit_details?.headsign || "",
+          }));
+  
+          setRouteStops(routeStations);
+        }
+        catch (error) {
+          console.error(error);
+        }
+      };
+  
+      fetchTransitRoute();
+    }, [destination])
+  const timeToMinutes = (timeStr: string | undefined) => {
+    if (!timeStr) return undefined;
+    const [time, modifier] = timeStr.toLowerCase().split(/(am|pm)/);
+    let [hours, minutes] = time.split(':').map(Number);
 
+    if (modifier === 'pm' && hours !== 12) hours += 12;
+    if (modifier === 'am' && hours === 12) hours = 0;
+
+    return hours * 60 + minutes;
+  };
+  useEffect(() => {
+    if (routeStops.length == 1) {
+      const arrivalMinutes = timeToMinutes(routeStops[0].arrivalTime);
+      const departureMinutes = timeToMinutes(routeStops[0].departureTime);
+      if (arrivalMinutes !== undefined && departureMinutes !== undefined) {
+        setEstimatedBus(arrivalMinutes - departureMinutes);
+      }
+      setMultipleStations(false);
+    }
+    else if (routeStops.length > 1) {
+      const arrivalMinutes = timeToMinutes(routeStops[routeStops.length - 1]?.arrivalTime);
+      const departureMinutes = timeToMinutes(routeStops[0]?.departureTime);
+      if (arrivalMinutes !== undefined && departureMinutes !== undefined) {
+        setEstimatedBus(arrivalMinutes - departureMinutes);
+      }
+      setMultipleStations(true);
+    }
+    else setEstimatedBus('-');
+  }, [routeStops]);
   useEffect(() => {
     (async () => {
       try {
@@ -244,8 +348,32 @@ export default function TabOneScreen() {
       Alert.alert("Error", "An unexpected error occurred.");
     }
   };
+  const handleRouteIndexIncrease = () => {
+    if (routeStops.length - 1 <= routeIndex) return console.warn("Reached end of stations!");
+    setRouteIndex(routeIndex + 1);
+  };
+  const handleRouteIndexDecrease = () => {
+    if (routeIndex <= 0) return console.warn("Reached end of stations!");
+    setRouteIndex(routeIndex - 1);
+  };
+  const openUber = () => {
+    if (!userLocation || !destination || !destination.location) return;
 
+    const { lat, lng } = destination.location; // Extract latitude and longitude
+    const nickname = destination.description; // Use the description as the nickname
 
+    const uberUrl = `uber://?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nickname)}`;
+
+    Linking.canOpenURL(uberUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(uberUrl);
+      } else {
+        // Fallback to mobile web
+        const fallbackUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nickname)}`;
+        Linking.openURL(fallbackUrl);
+      }
+    });
+  };
   const handleCancelTransportSelection = () => {
     setTransportModalVisible(false);
     closeTransportModal();
@@ -258,9 +386,18 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
-
-  function handleTransportSelection(arg0: string): void {
-    throw new Error('Function not implemented.');
+  function handleBusSelection() {
+    if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
+    setTimeout(() => {
+      mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
+        edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+    }, 200);
+    setRouteVisible(false);
+    setRouteIndex(0);
+    setStationVisible(true);
+    setBusNavVisible(true);
+    setTransportModalVisible(false);
   }
 
   useEffect(() => {
@@ -380,6 +517,58 @@ export default function TabOneScreen() {
                 pinColor='blue'
               />
             )}
+            {stationVisible && routeStops.map((rs) =>
+              <Marker coordinate={{
+                latitude: rs.fromCoords.lat,
+                longitude: rs.fromCoords.lng
+              }}
+                key={rs.from}
+                identifier='departure'
+                title={`Departure number ${routeStops.indexOf(rs) + 1}`}
+                description={rs.from}
+              >
+                  <Image
+                  source={require(`../../../assets/images/busiconPS.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              </Marker>
+            )}
+            {stationVisible && routeStops.map((rs) =>
+              <Marker coordinate={{
+                latitude: rs.toCoords.lat,
+                longitude: rs.toCoords.lng
+              }}
+                key={rs.to}
+                identifier='arrival'
+                title={`Destination number ${routeStops.indexOf(rs) + 1}`}
+                description={rs.to}
+              >
+                  <Image
+                  source={require(`../../../assets/images/busiconPS.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              </Marker>
+
+            )}
+
+            {stationVisible && routeStops.map((rs) =>
+              <MapViewDirections
+                origin={{
+                  latitude: rs.fromCoords.lat,
+                  longitude: rs.fromCoords.lng
+                }}
+                destination={{
+                  latitude: rs.toCoords.lat,
+                  longitude: rs.toCoords.lng
+                }}
+                key={rs.from}
+                apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                strokeWidth={5}
+                strokeColor={routeIndex === routeStops.indexOf(rs) ? '#0384fc' : 'gray'}
+              />
+            )}
             {hazardMarkers.map((hazard) => (
               <Marker
                 key={hazard.id}
@@ -387,7 +576,34 @@ export default function TabOneScreen() {
                 title={hazard.label}
                 description={`Reported at ${new Date(hazard.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
               >
-                <Text style={{ fontSize: 20 }}>{hazard.icon}</Text>
+              {hazard.icon === '🚗💥' && (
+                  <Image
+                  source={require(`../../../assets/images/accident.png`)}
+                  style={{ width: 70, height: 70 }}
+                  resizeMode='center'
+                />
+              )}
+              {hazard.icon === '🚦' && (
+                  <Image
+                  source={require(`../../../assets/images/trafficjam.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              )}
+              {hazard.icon === '🚧' && (
+                  <Image
+                  source={require(`../../../assets/images/roadblock.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              )}
+              {hazard.icon === '🌧️' && (
+                  <Image
+                  source={require(`../../../assets/images/weather.png`)}
+                  style={{ width: 80, height: 80 }}
+                  resizeMode='center'
+                />
+              )}
               </Marker>
             ))}
           </MapView>
@@ -395,6 +611,10 @@ export default function TabOneScreen() {
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
+          {/* BUS NAVIGATION */}
+          {routeStops.length > 0 && busNavVisible && (
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true) }} />
+          )}
 
           <TouchableOpacity
             style={[
@@ -439,7 +659,7 @@ export default function TabOneScreen() {
                 {/* Bus Option */}
                 <TouchableOpacity
                   style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
-                  onPress={() => handleTransportSelection("Bus")}
+                  onPress={() => handleBusSelection()}
                 >
                   <View style={styles.rideDetails}>
                     <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚌</Text>
@@ -456,7 +676,7 @@ export default function TabOneScreen() {
                 {/* Uber Option */}
                 <TouchableOpacity
                   style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
-                  onPress={() => handleTransportSelection("Uber")}
+                  onPress={() => openUber()}
                 >
                   <View style={styles.rideDetails}>
                     <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>

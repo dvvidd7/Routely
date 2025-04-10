@@ -1,5 +1,5 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -125,6 +125,9 @@ export default function TabTwoScreen() {
       </Text>
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
+      <View style={styles.adminPage}>
+        <TouchableOpacity onPress={()=>router.push('(user)')} ><Text style={styles.userText}>Go to user page</Text></TouchableOpacity>
+      </View>
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
             {username}
@@ -218,6 +221,18 @@ const styles = StyleSheet.create({
     marginTop: 120,
     fontFamily: 'GaleySemiBold',
     color:'gray'
+  },
+  adminPage:{
+    backgroundColor: '#0384fc',
+    width: '40%',
+    borderRadius: 5,
+    padding: 10,
+    bottom: 120,
+    right: 100
+  },
+  userText:{
+    fontWeight: '500',
+    fontSize: 15,
   },
   middleContainer: {
     flex: 1,

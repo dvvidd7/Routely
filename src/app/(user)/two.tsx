@@ -1,5 +1,5 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Entypo, Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -38,6 +38,7 @@ export default function TabTwoScreen() {
   const { data: points, error } = useGetPoints();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const { notification, setNotification } = useNotification();
+  const {isAdmin} = useAuth();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -176,6 +177,12 @@ export default function TabTwoScreen() {
 
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
+      {isAdmin && (
+              <View style={styles.adminPage}>
+              <TouchableOpacity onPress={()=>router.push('(admin)')} ><Text style={styles.adminText}>Go to admin page</Text></TouchableOpacity>
+            </View>
+      )}
+
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
             {username}
@@ -273,6 +280,18 @@ export default function TabTwoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  adminPage:{
+    backgroundColor: '#0384fc',
+    width: '40%',
+    borderRadius: 5,
+    padding: 10,
+    bottom: 50,
+    right: 100
+  },
+  adminText:{
+    fontWeight: '500',
+    fontSize: 15,
   },
   text: {
     fontSize: 40,
