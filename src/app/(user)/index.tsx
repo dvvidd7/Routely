@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Image,StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform } from 'react-native';
+import { Image,StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
@@ -64,6 +64,7 @@ export default function TabOneScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const { transportModalVisible, setTransportModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [loadingRoute, setLoadingRoute] = useState(false);
   const mapRef = useRef<MapView>(null);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
@@ -77,6 +78,7 @@ export default function TabOneScreen() {
   const [recentVisible, setRecentVisible] = useState<boolean>(true);
   const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
   const { notification } = useNotification();
+  const [isMapReady, setIsMapReady] = useState(false);
   const [routeIndex, setRouteIndex] = useState<number>(0);
   const [multipleStations, setMultipleStations] = useState<boolean>(false);
   const [hazardMarkers, setHazardMarkers] = useState<{
@@ -260,6 +262,15 @@ export default function TabOneScreen() {
   }, []);
 
   useEffect(() => {
+    if (stationVisible && routeStops.length > 0) {
+      setLoadingRoute(true);
+      setTimeout(() => setLoadingRoute(false), 1000); // Simulate loading
+    }
+  }, [stationVisible, routeStops]);
+  
+  {loadingRoute && <ActivityIndicator size="large" color="#0384fc" />}
+
+  useEffect(() => {
     if (notification) {
       console.log('Notifications are enabled');
     } else {
@@ -284,6 +295,16 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
+  
+  useEffect(() => {
+    if (stationVisible && routeStops.length > 0) {
+      setTimeout(() => {
+        mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
+          edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+        });
+      }, 500); // Delay rendering by 500ms
+    }
+  }, [stationVisible, routeStops]);
 
   useEffect(() => {
     if (!userLocation || !destination || !destination.description) return;
@@ -492,7 +513,6 @@ export default function TabOneScreen() {
       supabase.removeChannel(channel);
     };
   }, [notification]);
-
 
   useEffect(() => {
     if (!destination || !userLocation) return;
@@ -705,7 +725,10 @@ export default function TabOneScreen() {
             initialRegion={INITIAL_REGION}
             showsUserLocation={true}
             showsMyLocationButton={false} // Hide the default button
-            onMapReady={() => console.log("Map is ready")}
+            onMapReady={() => {
+              setIsMapReady(true);
+              console.log("Map is ready");
+            }}
             region={{
               latitude: userLocation?.latitude || INITIAL_REGION.latitude,
               longitude: userLocation?.longitude || INITIAL_REGION.longitude,
@@ -786,22 +809,22 @@ export default function TabOneScreen() {
 
             )}
 
-            {stationVisible && routeStops.map((rs) =>
-              <MapViewDirections
-                origin={{
-                  latitude: rs.fromCoords.lat,
-                  longitude: rs.fromCoords.lng
-                }}
-                destination={{
-                  latitude: rs.toCoords.lat,
-                  longitude: rs.toCoords.lng
-                }}
-                key={rs.from}
-                apikey={GOOGLE_MAPS_PLACES_LEGACY}
-                strokeWidth={5}
-                strokeColor={routeIndex === routeStops.indexOf(rs) ? '#0384fc' : 'gray'}
-              />
-            )}
+            {stationVisible && routeStops.length > 0 && routeStops.map((rs, index) => (
+                <MapViewDirections
+                   key={index}
+                   origin={{
+                      latitude: rs.fromCoords.lat,
+                      longitude: rs.fromCoords.lng,
+                  }}
+                  destination={{
+                     latitude: rs.toCoords.lat,
+                     longitude: rs.toCoords.lng,
+                  }}
+                  apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                  strokeWidth={5}
+                  strokeColor={routeIndex === index ? '#0384fc' : 'gray'}
+                  />  
+                ))}
 
             {hazardMarkers.map((hazard) => (
               <Marker
@@ -977,7 +1000,7 @@ export default function TabOneScreen() {
                 <View style={styles.rideDetails}>
                   <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚌</Text>
                   <View>
-                    <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Bus</Text>
+                    <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Transit</Text>
                     <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
                       Estimated time: {estimatedBus} mins
                     </Text>

@@ -30,7 +30,7 @@ const BusNavigation = ({station, onCancel, routeIndex, onIncrease, onDecrease, m
   return (
     <View style={styles.container}>
         <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={styles.title}>Bus Navigator</Text>
+            <Text style={styles.title}>Transit Navigator</Text>
             {multiple && (
             <TouchableOpacity style={styles.closeIconContainer} onPress={onDecrease}>
                 <FontAwesome style={styles.closeIcon} color='#0384fc' name='backward' size={15} />
@@ -52,9 +52,10 @@ const BusNavigation = ({station, onCancel, routeIndex, onIncrease, onDecrease, m
             <MaterialCommunityIcons name='bus-marker' size={30} color={'#0384fc'} />
         </View>
         <View>
-            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Take bus line <Text style={styles.customInput}>{station[routeIndex].line}</Text></Text>
-            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>From <Text style={styles.customInput}>{station[routeIndex].from}</Text></Text>
-            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>To <Text style={styles.customInput}>{station[routeIndex].to}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Take {station[routeIndex].vehicle.toLowerCase()} line: <Text style={styles.customInput}>{station[routeIndex].line}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Headsign: <Text style={styles.customInput}>{station[routeIndex].headsign}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>From: <Text style={styles.customInput}>{station[routeIndex].from}</Text></Text>
+            <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>To: <Text style={styles.customInput}>{station[routeIndex].to}</Text></Text>
             <Divider leftInset={true} style={{margin: 10}} />
             <View style={{flexDirection: 'row'}}>
                 <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Leaving at: <Text style={styles.customInput}>{station[routeIndex].departureTime}</Text></Text>

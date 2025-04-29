@@ -23,8 +23,10 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to show your position on the map",
         "NSLocationAlwaysUsageDescription": "We need your location to show your position on the map",
-        "NSUserTrackingUsageDescription": "We need your permission to send you notifications about nearby hazards."
-      }
+        "NSUserTrackingUsageDescription": "We need your permission to send you notifications about nearby hazards.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.web.app"
     },
     "android": {
       "permissions": [
