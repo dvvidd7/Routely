@@ -7,8 +7,8 @@ type AuthData={
     session: Session | null
     loading: boolean
     profile: any,
-    isAdmin: boolean
-    user: string,
+    isAdmin: boolean,
+    user: string | null | undefined,
 };
 
 const AuthContext = createContext<AuthData>({
@@ -18,14 +18,18 @@ const AuthContext = createContext<AuthData>({
     isAdmin: false,
     user: '',
 });
-type Profile = {
+type ProfileDB = {
     profile: Tables<'profiles'>;
 } | null;
+type Profile = {
+    group: string | null,
+    username: string | null,
+}
 export default function AuthProvider({children}: PropsWithChildren)
 {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true);
-    const [profile, setProfile] = useState(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
 
     useEffect(()=>{
         const fetchSession = async() =>{

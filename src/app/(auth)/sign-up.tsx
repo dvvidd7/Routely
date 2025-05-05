@@ -16,7 +16,6 @@ export default function SignIn() {
   const [hidden, setHidden] = useState<boolean>(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState('');
   const router = useRouter();
   const { dark } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -29,13 +28,23 @@ export default function SignIn() {
   //     resetFields();
   // };
   async function signUpWithEmail() {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const {data:authData, error: authError } = await supabase.auth.signUp({ email, password });
     setLoading(true);
 
-    if (error) Alert.alert(error.message);
+    if (authError) Alert.alert(authError.message);
     setLoading(false);
-    
-    router.navigate('/sign-in');
+    // const userId = authData.user?.id;
+    // const {data: incId, error: incIdError} = await supabase.from('profiles')
+    // .select('incrementing_id')
+    // .eq('id', userId).single();
+    // if(incIdError) return console.error("Error reading increment id: " + incIdError);
+
+    // const {data: usernameUpdate, error: usernameUpdateError} = await supabase
+    // .from('profiles')
+    // .update({username: `user${incId?.incrementing_id}`})
+    // .eq('id', userId);
+    // if(usernameUpdateError) return console.error("Error updating username: " + usernameUpdateError.message);
+    router.push('/sign-in');
     resetFields();
   }
 

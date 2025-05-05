@@ -8,7 +8,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { useNavigation, useRouter } from 'expo-router';
-import { useGetPoints, useGetUsers, useUpdateTransport, useUpdateUser } from '@/api/profile';
+import { useGetPoints, useGetUserName, useGetUsers, useUpdateTransport, useUpdateUser } from '@/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import LeaderboardUser from '@/components/LeaderboardUser';
@@ -24,7 +24,7 @@ const data = [
 export default function TabTwoScreen() {
   const { dark } = useTheme();
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
-  const [username, setUsername] = useState('User');
+  const [username, setUsername] = useState('user');
   const [newUsername, setNewUsername] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [transport, setTransport] = useState('');
@@ -39,10 +39,13 @@ export default function TabTwoScreen() {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const { notification, setNotification } = useNotification();
   const {isAdmin} = useAuth();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if(error){console.error('Error fetching user: ', error.message); return;}
+
       if (user) {
         setEmail(user.email ?? '');
       }
@@ -55,6 +58,24 @@ export default function TabTwoScreen() {
     };
     fetchUser();
   }, []);
+  useEffect(()=>{
+    
+    const channels = supabase.channel('profiles-update-channel')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'profiles' },
+      (payload) => {
+        setUsername((payload.new as { username: string }).username);
+        queryClient.invalidateQueries({queryKey: ['users']});
+        
+      }
+    )
+    .subscribe()
+
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  }, [])
 
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
@@ -81,7 +102,7 @@ export default function TabTwoScreen() {
 
   const handlePress = () => {
     if (newUsername.trim()) {
-      setUsername(newUsername);
+      // setUsername(newUsername);
       updateUsername({ user: newUsername });
       setNewUsername('');
       setIsEditing(false);
@@ -286,7 +307,7 @@ const styles = StyleSheet.create({
     width: '40%',
     borderRadius: 5,
     padding: 10,
-    bottom: 50,
+    bottom: 80,
     right: 100,
     alignItems:'center'
   },
@@ -336,7 +357,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderWidth: 1,
     marginTop: 20,
-    marginBottom: 25,
+    marginBottom: 20,
     paddingHorizontal: 10,
     width: '80%',
     fontSize: 18,
@@ -347,13 +368,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#0384fc',
     padding: 13,
     borderRadius: 30,
-    marginBottom: 50,
+    marginBottom: 30,
   },
   buttonCancel: {
     backgroundColor: 'red',
     padding: 13,
     borderRadius: 30,
-    marginBottom: 190,
+    marginBottom: 140,
   },
   buttonText: {
     color: 'white',
@@ -425,11 +446,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
     alignSelf: 'center',
+    bottom: 40,
   },
   notificationSwitchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 45,
+    bottom: 70,
     alignSelf: 'center',
   },
   switchText: {
@@ -456,6 +478,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
+    bottom: 30,
   },
   feedbackText: {
     color: '#0384fc',
@@ -463,6 +486,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 10,
-    marginBottom: 64,
+    bottom: 40,
   },
 });

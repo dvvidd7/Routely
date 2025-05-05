@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Image,StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -785,8 +785,8 @@ export default function TabOneScreen() {
               >
                   <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
+                  style={{ width: 65, height: 65 }}
+                  
                 />
               </Marker>
             )}
@@ -802,8 +802,8 @@ export default function TabOneScreen() {
               >
                   <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
+                  style={{ width: 65, height: 65 }}
+                  
                 />
               </Marker>
 
@@ -873,7 +873,7 @@ export default function TabOneScreen() {
           )}
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true) }} />
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); }} />
           )}
 
           {/* MY LOCATION BUTTON */}

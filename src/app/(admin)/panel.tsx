@@ -75,6 +75,9 @@ export default function Panel({ navigation }: any) {
   return (
     <View style={[styles.container, { backgroundColor: dark ? "#0f0f0f" : "white" }]}>
       <Text style={[styles.title, { color: dark ? colors.text : "black" }]}>Reported Hazards</Text>
+      {hazards.length === 0 && (
+        <Text style={{fontWeight: '400', fontSize: 20, top: 40, zIndex: 5}}>No hazards reported today!</Text>
+      )}
       <FlatList
         data={hazards}
         keyExtractor={(item) => item.id.toString()}

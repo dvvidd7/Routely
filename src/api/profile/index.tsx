@@ -1,6 +1,7 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/providers/AuthProvider'
+import { Alert } from 'react-native';
 import { Text } from 'react-native';
 export const useUpdateUser = () => {
     const {session} = useAuth();
@@ -15,6 +16,9 @@ export const useUpdateUser = () => {
             if(error) throw new Error(error.message);
             return updatedUser;
         },
+        async onError(error){
+            Alert.alert("That username already exists!");
+        }
     })
 };
 export const useUpdateTransport = () => {
@@ -81,6 +85,22 @@ export const useGetUsers = () => {
             if(error) throw new Error(error.message);
 
             return data;
+        }
+    })
+}
+export const useGetUserName = () => {
+    const {session} = useAuth();
+    return useQuery({
+        queryKey: ['username'],
+        async queryFn(){
+            const {data:returnedUser, error} = await supabase
+            .from("profiles")
+            .select("username")
+            .eq('id', session?.user.id)
+
+            if(error) throw new Error(error.message);
+
+            return returnedUser;
         }
     })
 }
