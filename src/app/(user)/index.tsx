@@ -194,6 +194,7 @@ export default function TabOneScreen() {
       }
     });
   };
+
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   useEffect(() => {
     const startTracking = async () => {
@@ -529,25 +530,38 @@ export default function TabOneScreen() {
           `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
         );
         const data = await response.json();
+    
+        // Check if the response contains routes
         if (!data.routes || data.routes.length === 0) {
           console.warn("No transit routes found.");
           setRouteStops([]);
           return;
         }
-        const steps = data.routes[0].legs[0].steps.filter(
-          (step: { travel_mode: string; }) => step.travel_mode === "TRANSIT"
+    
+        // Safely access steps
+        const steps = data.routes[0]?.legs[0]?.steps || [];
+        if (steps.length === 0) {
+          console.warn("No steps found in the route.");
+          setRouteStops([]);
+          return;
+        }
+    
+        // Filter transit steps
+        const transitSteps = steps.filter(
+          (step: { travel_mode: string }) => step.travel_mode === "TRANSIT"
         );
-
-        const routeStations = steps.map((step: Station) => ({
+    
+        // Map transit steps to route stops
+        const routeStations = transitSteps.map((step: Station) => ({
           from: step.transit_details?.departure_stop?.name || "Unknown stop",
           to: step.transit_details?.arrival_stop?.name || "Unknown stop",
           fromCoords: {
-            lat: step.transit_details.departure_stop.location.lat,
-            lng: step.transit_details.departure_stop.location.lng,
+            lat: step.transit_details?.departure_stop?.location?.lat || 0,
+            lng: step.transit_details?.departure_stop?.location?.lng || 0,
           },
           toCoords: {
-            lat: step.transit_details.arrival_stop.location.lat,
-            lng: step.transit_details.arrival_stop.location.lng,
+            lat: step.transit_details?.arrival_stop?.location?.lat || 0,
+            lng: step.transit_details?.arrival_stop?.location?.lng || 0,
           },
           line: step.transit_details?.line?.short_name || "N/A",
           vehicle: step.transit_details?.line?.vehicle?.type || "Transit",
@@ -555,11 +569,10 @@ export default function TabOneScreen() {
           arrivalTime: step.transit_details?.arrival_time?.text,
           headsign: step.transit_details?.headsign || "",
         }));
-
+    
         setRouteStops(routeStations);
-      }
-      catch (error) {
-        console.error(error);
+      } catch (error) {
+        console.error("Error fetching transit route:", error);
       }
     };
 
