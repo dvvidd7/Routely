@@ -1,15 +1,17 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, TouchableOpacity } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { Text } from '@/components/Themed';
-import { FontAwesome } from '@expo/vector-icons';
+import { Entypo, Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
-import { useGetPoints, useUpdateTransport, useUpdateUser } from '@/api/profile';
+import { useGetPoints, useGetUserName, useGetUsers, useUpdateTransport, useUpdateUser } from '@/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
+import LeaderboardUser from '@/components/LeaderboardUser';
+import { useQueryClient } from '@tanstack/react-query';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -25,30 +27,72 @@ export default function TabTwoScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [transport, setTransport] = useState('');
   const [isFocus, setIsFocus] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [email, setEmail] = useState('');
   const router = useRouter();
-  const {user: dataUsername, profile} = useAuth();
+  const {user: dataUsername, profile, session} = useAuth();
   const {mutate:updateUsername} = useUpdateUser();
   const {mutate:updateTransport} = useUpdateTransport();
-
+  const { data: points, error } = useGetPoints();
+  const { data: users, error: usersError } = useGetUsers();
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const {data: getUser} = useGetUserName();
   //const {data:dataUsername} = useGetUser();
-
+  const queryClient = useQueryClient();
+  useEffect(()=>{
+    const channels = supabase.channel('custom-update-channel')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
+      (payload) => {
+        setTransport(payload.new.fav_transport);
+      }
+    )
+    .subscribe();
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  },[])
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if(error){console.error('Error fetching user: ', error.message); return;}
+
       if (user) {
         setEmail(user.email ?? '');
       }
-      if(dataUsername){
+      if (!getUser) {
+        if(!dataUsername) return;
         setUsername(dataUsername);
       }
-      if(profile.fav_transport){
+      else{
+        setUsername(getUser.username);
+      }
+
+      if (profile.fav_transport) {
         setTransport(profile.fav_transport);
       }
     };
     fetchUser();
   }, []);
+  useEffect(()=>{
+    
+    const channels = supabase.channel('profiles-update-channel')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
+      (payload) => {
+        setUsername((payload.new as { username: string }).username);
+        queryClient.invalidateQueries({queryKey: ['users']});
+        queryClient.invalidateQueries({queryKey:['username']});
+      }
+    )
+    .subscribe()
 
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  }, [])
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
       console.log("Redirected URL:", event.url);
@@ -119,19 +163,59 @@ export default function TabTwoScreen() {
       <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
         Account
       </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Pressable style={{ ...styles.viewLeader, backgroundColor: dark ? '#333333' : 'gainsboro' }} onPress={() => setModalVisible(true)}>
+          <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
+          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
+        </Pressable>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
+          <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{ marginRight: 20 }} />
+        </View>
+      </View>
+      <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)} animationType='slide'>
+        <View style={{ ...styles.modal, backgroundColor: dark ? 'black' : 'white' }}>
+          {/* {LeaderboardUser(profile)} */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 60 }}>
+            <Pressable onPress={() => setModalVisible(false)}>
+              <Feather name={'arrow-left'} size={40} color={'#0384fc'} />
+            </Pressable>
+          </View>
 
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 30 }}>
+              Leaderboard
+            </Text>
+          </View>
+
+          <FlatList
+            style={{ marginTop: 25 }}
+            data={users}
+            renderItem={({ item, index }) => {
+              return <LeaderboardUser index={index} userN={item} />
+            }}
+            contentContainerStyle={{ gap: 10 }}
+          />
+        </View>
+      </Modal>
       <Text style={styles.adminText}>
         Admin
       </Text>
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-      <View style={styles.adminPage}>
+      <View style={styles.userPage}>
         <TouchableOpacity onPress={()=>router.push('(user)')} ><Text style={styles.userText}>Go to user page</Text></TouchableOpacity>
       </View>
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-          <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
-            {username}
-          </Text>
+          {isLoading ? (
+            <Text style={[styles.username, { color: isDarkMode ? 'gray' : 'darkgray' }]}>
+              Loading...
+            </Text>
+          ) : (
+            <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
+              {username}
+            </Text>
+          )}
           <Pressable onPress={handlePencilPress}>
             <FontAwesome name="edit" size={18} color={isDarkMode ? 'white' : 'black'} style={styles.pencilIcon} />
           </Pressable>
@@ -208,6 +292,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  viewLeader: {
+    flexDirection: 'row',
+    left: 20,
+    borderRadius: 5,
+    padding: 5,
+  },
+  modal: {
+    flex: 1,
+  },
   text: {
     fontSize: 50,
     margin: 20,
@@ -222,13 +315,13 @@ const styles = StyleSheet.create({
     fontFamily: 'GaleySemiBold',
     color:'gray'
   },
-  adminPage:{
+  userPage:{
     backgroundColor: '#0384fc',
     width: '40%',
     borderRadius: 5,
     padding: 10,
-    bottom: 120,
-    right: 100,
+    bottom: 100,
+    right: 120,
     alignItems:'center'
   },
   userText:{

@@ -93,14 +93,14 @@ export const useGetUserName = () => {
     return useQuery({
         queryKey: ['username'],
         async queryFn(){
-            const {data:returnedUser, error} = await supabase
+            const {data:user, error} = await supabase
             .from("profiles")
             .select("username")
-            .eq('id', session?.user.id)
+            .eq('id', session?.user.id).single();
 
             if(error) throw new Error(error.message);
 
-            return returnedUser;
+            return user;
         }
     })
 }

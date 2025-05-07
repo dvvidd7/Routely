@@ -69,7 +69,6 @@ export default function TabOneScreen() {
   const [routeIndex, setRouteIndex] = useState<number>(0);
   const [multipleStations, setMultipleStations] = useState<boolean>(false);
   const [routeVisible, setRouteVisible] = useState<boolean>(false);
-  const [recentVisible, setRecentVisible] = useState<boolean>(true);
   const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
   const [estimatedBus, setEstimatedBus] = useState<number | string | null>(null);
   const [stationVisible, setStationVisible] = useState<boolean>(false);
@@ -375,8 +374,9 @@ export default function TabOneScreen() {
     });
   };
   const handleCancelTransportSelection = () => {
-    setTransportModalVisible(false);
     closeTransportModal();
+    setStationVisible(false);
+    setRouteVisible(false);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -386,6 +386,7 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
+
   function handleBusSelection() {
     if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
     setTimeout(() => {
@@ -455,6 +456,16 @@ export default function TabOneScreen() {
                 isFocused && styles.searchInputFocused,
                 dark && styles.searchInputDark
               ],
+              listView:{
+                borderRadius: 6,
+              },
+              row: {
+                backgroundColor: dark ? 'black' : '#fff',
+                padding: 13,
+                height: 50,
+                flexDirection: 'row',
+              },
+              description:{color: dark ? 'white' : 'black', fontSize: 16,}
             }}
             textInputProps={{
               onFocus: () => setIsFocused(true),
@@ -482,7 +493,7 @@ export default function TabOneScreen() {
               longitudeDelta: 0.005,
             }}
           >
-            {destination && userLocation?.latitude && userLocation?.longitude && (
+            {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
               <MapViewDirections
                 origin={{
                   latitude: userLocation.latitude,
@@ -494,7 +505,7 @@ export default function TabOneScreen() {
                 strokeColor='#0384fc'
               />
             )}
-            {destination?.location && userLocation && (
+            {destination?.location && userLocation && routeVisible &&  (
               <Marker
                 coordinate={{
                   latitude: destination.location.lat,
@@ -506,7 +517,7 @@ export default function TabOneScreen() {
                 pinColor='blue'
               />
             )}
-            {userLocation && destination && (
+            {userLocation && destination && routeVisible && (
               <Marker
                 coordinate={{
                   latitude: userLocation?.latitude,
@@ -529,8 +540,8 @@ export default function TabOneScreen() {
               >
                   <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
+                  style={{ width: 65, height: 65 }}
+                  
                 />
               </Marker>
             )}
@@ -546,30 +557,31 @@ export default function TabOneScreen() {
               >
                   <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
+                  style={{ width: 65, height: 65 }}
+                  
                 />
               </Marker>
 
             )}
 
-            {stationVisible && routeStops.map((rs) =>
-              <MapViewDirections
-                origin={{
-                  latitude: rs.fromCoords.lat,
-                  longitude: rs.fromCoords.lng
-                }}
-                destination={{
-                  latitude: rs.toCoords.lat,
-                  longitude: rs.toCoords.lng
-                }}
-                key={rs.from}
-                apikey={GOOGLE_MAPS_PLACES_LEGACY}
-                strokeWidth={5}
-                strokeColor={routeIndex === routeStops.indexOf(rs) ? '#0384fc' : 'gray'}
-              />
-            )}
-            {hazardMarkers.map((hazard) => (
+            {stationVisible && routeStops.length > 0 && routeStops.map((rs, index) => (
+                <MapViewDirections
+                   key={index}
+                   origin={{
+                      latitude: rs.fromCoords.lat,
+                      longitude: rs.fromCoords.lng,
+                  }}
+                  destination={{
+                     latitude: rs.toCoords.lat,
+                     longitude: rs.toCoords.lng,
+                  }}
+                  apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                  strokeWidth={5}
+                  strokeColor={routeIndex === index ? '#0384fc' : 'gray'}
+                  />  
+                ))}            
+              
+              {hazardMarkers.map((hazard) => (
               <Marker
                 key={hazard.id}
                 coordinate={{ latitude: hazard.latitude, longitude: hazard.longitude }}
@@ -613,7 +625,7 @@ export default function TabOneScreen() {
           </TouchableOpacity>
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true) }} />
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); }} />
           )}
 
           <TouchableOpacity

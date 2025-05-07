@@ -20,6 +20,7 @@ import { useTransportModal } from '../TransportModalContext';
 import BusNavigation from '@/components/BusNavigation';
 import * as Notifications from 'expo-notifications';
 import { useNotification } from '@/providers/NotificationContext';
+import { Divider } from 'react-native-paper';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -902,6 +903,7 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
+
                 onPress={(data, details = null) => {
                   if (!details || !details.geometry) return;
                   dispatch(
@@ -930,6 +932,21 @@ export default function TabOneScreen() {
                     isFocused && styles.searchInputFocused,
                     dark && styles.searchInputDark
                   ],
+                  listView: {
+                    backgroundColor: dark ? 'black' : 'white',
+                    zIndex: 999,
+                    position: 'absolute',
+                    top: 60,
+                    borderRadius: 4,
+                  },
+                  row: {
+                    backgroundColor: dark ? 'black' : '#fff',
+                    padding: 13,
+                    height: 50,
+                    flexDirection: 'row',
+                  },
+                  description:{color: dark ? 'white' : 'black', fontSize: 16,}
+                  
                 }}
                 textInputProps={{
                   autoFocus: true,
@@ -948,6 +965,7 @@ export default function TabOneScreen() {
                   renderItem={({ item }) => <RecentSearch onPress={handleRecentSearchPress} searchRef={searchRef} userSearch={item} />}
                   contentContainerStyle={{ gap: 5 }}
                   style={{ position: "relative", top: 170, left: 25 }}
+                  ItemSeparatorComponent={() => <Divider />}
                 />
               )}
             </View>

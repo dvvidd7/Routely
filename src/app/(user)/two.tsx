@@ -31,7 +31,7 @@ export default function TabTwoScreen() {
   const [isFocus, setIsFocus] = useState(false);
   const [email, setEmail] = useState('');
   const router = useRouter();
-  const { user: dataUsername, profile } = useAuth();
+  const { user: dataUsername, profile, session } = useAuth();
   const { mutate: updateUsername } = useUpdateUser();
   const { mutate: updateTransport } = useUpdateTransport();
   const { data: users, error: usersError } = useGetUsers();
@@ -40,6 +40,22 @@ export default function TabTwoScreen() {
   const { notification, setNotification } = useNotification();
   const {isAdmin} = useAuth();
   const queryClient = useQueryClient();
+  const {data: getUser} = useGetUserName();
+  
+  useEffect(()=>{
+    const channels = supabase.channel('custom-update-channel')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'profiles', filter:`id=eq.${session?.user.id}` },
+      (payload) => {
+        setTransport(payload.new.fav_transport);
+      }
+    )
+    .subscribe();
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  },[])
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -49,9 +65,14 @@ export default function TabTwoScreen() {
       if (user) {
         setEmail(user.email ?? '');
       }
-      if (dataUsername) {
+      if (!getUser) {
+        if(!dataUsername) return;
         setUsername(dataUsername);
       }
+      else{
+        setUsername(getUser.username);
+      }
+
       if (profile.fav_transport) {
         setTransport(profile.fav_transport);
       }
@@ -63,11 +84,11 @@ export default function TabTwoScreen() {
     const channels = supabase.channel('profiles-update-channel')
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'profiles' },
+      { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
       (payload) => {
         setUsername((payload.new as { username: string }).username);
         queryClient.invalidateQueries({queryKey: ['users']});
-        
+        queryClient.invalidateQueries({queryKey: ['username']});
       }
     )
     .subscribe()
@@ -158,7 +179,7 @@ export default function TabTwoScreen() {
       </Text>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable style={{ ...styles.viewLeader, backgroundColor: 'transparent' }} onPress={() => setModalVisible(true)}>
+        <Pressable style={{ ...styles.viewLeader, backgroundColor: dark ? '#333333' : 'gainsboro' }} onPress={() => setModalVisible(true)}>
           <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
           <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
         </Pressable>
@@ -255,9 +276,12 @@ export default function TabTwoScreen() {
                 setTransport(transport);
                 setIsFocus(false);
               }}
-              renderLeftIcon={() => (
-                <AntDesign style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name="car" size={20} />
+              renderLeftIcon={() => transport === 'bus' ? (
+                <FontAwesome style={styles.icon} color={'#0384fc'} name='bus' size={20} />
+                
                 // <FontAwesome style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name={transport === "bus" ? "bus" : "car"} size={20} />
+              ) : (
+                <AntDesign style={styles.icon} color={'#0384fc'} name="car" size={20} />
               )}
               renderItem={renderItem}
             />
@@ -308,7 +332,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     bottom: 80,
-    right: 100,
+    right: 120,
     alignItems:'center'
   },
   adminText:{
