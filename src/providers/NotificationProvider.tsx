@@ -5,20 +5,23 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import * as Location from 'expo-location';
+import React from "react";
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
     }),
 });
 
 const NotificationProvider = ({ children }: PropsWithChildren) => {
     const [expoPushToken, setExpoPushToken] = useState<ExpoPushToken>();
     const [notification, setNotification] = useState<Notifications.Notification>();
-    const notificationListener = useRef<Notifications.EventSubscription>();
-    const responseListener = useRef<Notifications.EventSubscription>();
+    const notificationListener = useRef<Notifications.EventSubscription>(null);
+    const responseListener = useRef<Notifications.EventSubscription>(null);
 
     const { profile } = useAuth();
 
@@ -54,11 +57,13 @@ const NotificationProvider = ({ children }: PropsWithChildren) => {
         });
 
         return () => {
-            notificationListener.current &&
-                Notifications.removeNotificationSubscription(notificationListener.current);
-            responseListener.current &&
-                Notifications.removeNotificationSubscription(responseListener.current);
-        };
+            if (notificationListener.current) {
+              notificationListener.current.remove(); 
+            }
+            if (responseListener.current) {
+              responseListener.current.remove(); 
+            }
+          };
     }, []);
 
     
