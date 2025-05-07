@@ -5,6 +5,7 @@ import TabBarButton from './TabBarButton';
 import { useState } from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTransportModal } from '@/app/TransportModalContext';
+import React from 'react';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & { transportModalVisible: boolean }) {
   const { colors, dark } = useTheme();

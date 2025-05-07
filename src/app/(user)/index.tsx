@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Image,StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
+import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
@@ -113,35 +113,35 @@ export default function TabOneScreen() {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
-   const getUserLocation = async () => {
-          let { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') {
-            console.error('Permission to access location was denied');
-            return null;
-          }
-        
-          let location = await Location.getCurrentPositionAsync({});
-          return location.coords;
-        };
-      
-        const getDistanceFromLatLonInMeters = (
-          lat1: number,
-          lon1: number,
-          lat2: number,
-          lon2: number
-        ) => {
-          const R = 6371000; // Radius of the earth in meters
-          const dLat = ((lat2 - lat1) * Math.PI) / 180;
-          const dLon = ((lon2 - lon1) * Math.PI) / 180;
-          const a =
-            0.5 -
-            Math.cos(dLat) / 2 +
-            (Math.cos((lat1 * Math.PI) / 180) *
-              Math.cos((lat2 * Math.PI) / 180) *
-              (1 - Math.cos(dLon))) /
-              2;
-          return R * 2 * Math.asin(Math.sqrt(a));
-        };
+  const getUserLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      console.error('Permission to access location was denied');
+      return null;
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+    return location.coords;
+  };
+
+  const getDistanceFromLatLonInMeters = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const R = 6371000; // Radius of the earth in meters
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      0.5 -
+      Math.cos(dLat) / 2 +
+      (Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        (1 - Math.cos(dLon))) /
+      2;
+    return R * 2 * Math.asin(Math.sqrt(a));
+  };
   const handleRecentSearchPress = () => {
     setIsFocused(false);
     setRouteVisible(true);
@@ -215,7 +215,7 @@ export default function TabOneScreen() {
           const { latitude, longitude } = location.coords;
 
           // Update the current location
-          
+
 
           // Compare with the previous location
           if (previousLocation) {
@@ -225,7 +225,7 @@ export default function TabOneScreen() {
               latitude,
               longitude
             );
-            if(distance < 50){
+            if (distance < 50) {
               return;
             }
             if (distance > 50) { // Threshold for movement (10 meters)
@@ -268,8 +268,8 @@ export default function TabOneScreen() {
       setTimeout(() => setLoadingRoute(false), 1000); // Simulate loading
     }
   }, [stationVisible, routeStops]);
-  
-  {loadingRoute && <ActivityIndicator size="large" color="#0384fc" />}
+
+  { loadingRoute && <ActivityIndicator size="large" color="#0384fc" /> }
 
   useEffect(() => {
     if (notification) {
@@ -296,7 +296,7 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
-  
+
   useEffect(() => {
     if (stationVisible && routeStops.length > 0) {
       setTimeout(() => {
@@ -407,12 +407,14 @@ export default function TabOneScreen() {
         return;
       }
 
-      // Filter out hazards older than 24 hours
+      // Filter out hazards older than 2 hours
       const now = new Date();
-      const filteredHazards = (data || []).filter((hazard) => {
-        const hazardTime = new Date(hazard.created_at);
-        return now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-      });
+      const filteredHazards = Array.isArray(data)
+        ? data.filter((hazard) => {
+          const hazardTime = new Date(hazard.created_at);
+          return now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        })
+        : [];
 
       setHazardMarkers(filteredHazards);
     };
@@ -503,15 +505,15 @@ export default function TabOneScreen() {
             );
           } else if (payload.eventType === 'DELETE') {
             setHazardMarkers((prev) =>
-              prev.filter((hazard) => hazard.id !== payload.old.id)
+              Array.isArray(prev) ? prev.filter((hazard) => hazard.id !== payload.old.id) : []
             );
           }
         }
       )
-      .subscribe();
+    const subscription = channel.subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      subscription.unsubscribe();
     };
   }, [notification]);
 
@@ -530,29 +532,43 @@ export default function TabOneScreen() {
           `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
         );
         const data = await response.json();
-    
+
+        console.log("API Response:", data); // Log the API response for debugging
+
         // Check if the response contains routes
         if (!data.routes || data.routes.length === 0) {
           console.warn("No transit routes found.");
           setRouteStops([]);
           return;
         }
-    
-        // Safely access steps
-        const steps = data.routes[0]?.legs[0]?.steps || [];
+
+        // Safely access legs
+        const legs = data.routes[0]?.legs;
+        if (!legs || legs.length === 0) {
+          console.warn("No legs found in the route.");
+          setRouteStops([]);
+          return;
+        }
+
+        // Safely access steps with fallback to empty array
+        const steps = legs?.[0]?.steps ?? [];
         if (steps.length === 0) {
           console.warn("No steps found in the route.");
           setRouteStops([]);
           return;
         }
-    
-        // Filter transit steps
+
+        // Log travel modes to help debug
+        console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
+
+        // Filter transit steps (case-insensitive, and ensure transit_details exists)
         const transitSteps = steps.filter(
-          (step: { travel_mode: string }) => step.travel_mode === "TRANSIT"
+          (step: any) =>
+            step?.travel_mode?.toUpperCase() === "TRANSIT" && step?.transit_details
         );
-    
+
         // Map transit steps to route stops
-        const routeStations = transitSteps.map((step: Station) => ({
+        const routeStations = transitSteps.map((step: any) => ({
           from: step.transit_details?.departure_stop?.name || "Unknown stop",
           to: step.transit_details?.arrival_stop?.name || "Unknown stop",
           fromCoords: {
@@ -569,10 +585,11 @@ export default function TabOneScreen() {
           arrivalTime: step.transit_details?.arrival_time?.text,
           headsign: step.transit_details?.headsign || "",
         }));
-    
+
         setRouteStops(routeStations);
       } catch (error) {
         console.error("Error fetching transit route:", error);
+        setRouteStops([]);
       }
     };
 
@@ -647,25 +664,30 @@ export default function TabOneScreen() {
     console.log("Checking for recent hazards since:", thirtyMinutesAgo);
 
     const { data: recentHazards, error: queryError } = await supabase
-    .from("hazards")
-    .select("*")
-    .eq("email", userEmail)
-    .gt("created_at", thirtyMinutesAgo);
-  
-  if (queryError) {
-    console.error("Error checking recent hazards:", queryError);
-    Alert.alert("Error", "Couldn't verify report limit.");
-    return;
-  }
+      .from("hazards")
+      .select("*")
+      .eq("email", userEmail)
+      .gt("created_at", thirtyMinutesAgo);
 
-  console.log("Recent hazards:", recentHazards);
+    if (queryError) {
+      console.error("Error checking recent hazards:", queryError);
+      Alert.alert("Error", "Couldn't verify report limit.");
+      return;
+    }
 
-  // ✅ Check if the user has reached the 5 report limit
-  if (recentHazards.length >= 5) {
-    console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
-    Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
-    return;
-  }
+    if (!Array.isArray(recentHazards)) {
+      console.error("Recent hazards is not an array:", recentHazards);
+      return;
+    }
+
+    console.log("Recent hazards:", recentHazards);
+
+    // ✅ Check if the user has reached the 5 report limit
+    if (recentHazards.length >= 5) {
+      console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
+      Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
+      return;
+    }
 
     const newHazard = {
       latitude: userLocation.latitude,
@@ -796,10 +818,10 @@ export default function TabOneScreen() {
                 title={`Departure number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.from}
               >
-                  <Image
+                <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
                   style={{ width: 65, height: 65 }}
-                  
+
                 />
               </Marker>
             )}
@@ -813,31 +835,31 @@ export default function TabOneScreen() {
                 title={`Destination number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.to}
               >
-                  <Image
+                <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
                   style={{ width: 65, height: 65 }}
-                  
+
                 />
               </Marker>
 
             )}
 
             {stationVisible && routeStops.length > 0 && routeStops.map((rs, index) => (
-                <MapViewDirections
-                   key={index}
-                   origin={{
-                      latitude: rs.fromCoords.lat,
-                      longitude: rs.fromCoords.lng,
-                  }}
-                  destination={{
-                     latitude: rs.toCoords.lat,
-                     longitude: rs.toCoords.lng,
-                  }}
-                  apikey={GOOGLE_MAPS_PLACES_LEGACY}
-                  strokeWidth={5}
-                  strokeColor={routeIndex === index ? '#0384fc' : 'gray'}
-                  />  
-                ))}
+              <MapViewDirections
+                key={index}
+                origin={{
+                  latitude: rs.fromCoords.lat,
+                  longitude: rs.fromCoords.lng,
+                }}
+                destination={{
+                  latitude: rs.toCoords.lat,
+                  longitude: rs.toCoords.lng,
+                }}
+                apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                strokeWidth={5}
+                strokeColor={routeIndex === index ? '#0384fc' : 'gray'}
+              />
+            ))}
 
             {hazardMarkers.map((hazard) => (
               <Marker
@@ -846,34 +868,34 @@ export default function TabOneScreen() {
                 title={hazard.label}
                 description={`Reported at ${new Date(hazard.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
               >
-              {hazard.icon === '🚗💥' && (
+                {hazard.icon === '🚗💥' && (
                   <Image
-                  source={require(`../../../assets/images/accident.png`)}
-                  style={{ width: 70, height: 70 }}
-                  resizeMode='center'
-                />
-              )}
-              {hazard.icon === '🚦' && (
+                    source={require(`../../../assets/images/accident.png`)}
+                    style={{ width: 70, height: 70 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.icon === '🚦' && (
                   <Image
-                  source={require(`../../../assets/images/trafficjam.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
-              )}
-              {hazard.icon === '🚧' && (
+                    source={require(`../../../assets/images/trafficjam.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.icon === '🚧' && (
                   <Image
-                  source={require(`../../../assets/images/roadblock.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
-              )}
-              {hazard.icon === '🌧️' && (
+                    source={require(`../../../assets/images/roadblock.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.icon === '🌧️' && (
                   <Image
-                  source={require(`../../../assets/images/weather.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
-              )}
+                    source={require(`../../../assets/images/weather.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
               </Marker>
             ))}
           </MapView>
