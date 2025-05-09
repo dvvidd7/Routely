@@ -90,10 +90,10 @@ export default function Panel({ navigation }: any) {
           <TouchableOpacity
             style={[styles.row, { backgroundColor: dark ? "#0f0f0f" : "white" }]}
           >
-            <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.icon}</Text>
+            <Text style={[styles.iconCell, { color: dark ? colors.text : "black" }]}>{item.icon}</Text>
             <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.label}</Text>
             <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{new Date(item.created_at).toLocaleString()}</Text>
-            <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.email}</Text>
+            <Text style={[styles.emailCell, { color: dark ? colors.text : "black" }]}>{item.email}</Text>
           </TouchableOpacity>
         )}
       />
@@ -120,9 +120,19 @@ const styles = StyleSheet.create({
     borderBottomColor: "#ddd",
     alignItems: "center",
   },
-  cell: {
-    flex: 1,
+  iconCell: {
+    flex: 0.2,
     textAlign: "center",
-    fontSize: 16,
+    fontSize: 20,
   },
+  cell: {
+    flex: 0.5,
+    textAlign: 'center',
+    fontSize: 15,
+  },
+  emailCell: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 15,
+  }
 });

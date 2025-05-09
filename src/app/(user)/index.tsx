@@ -537,7 +537,7 @@ export default function TabOneScreen() {
         );
         const data = await response.json();
 
-        console.log("API Response:", data); // Log the API response for debugging
+        // console.log("API Response:", data); // Log the API response for debugging
 
         // Check if the response contains routes
         if (!data.routes || data.routes.length === 0) {
@@ -563,7 +563,7 @@ export default function TabOneScreen() {
         }
 
         // Log travel modes to help debug
-        console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
+        // console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
 
         // Filter transit steps (case-insensitive, and ensure transit_details exists)
         if(!steps)return [];
