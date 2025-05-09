@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal, Linking } from 'react-native';
+import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, FlatList, Modal, Linking, TextInput } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Feather } from '@expo/vector-icons';
@@ -13,6 +13,9 @@ import MapViewDirections from 'react-native-maps-directions';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
 import BusNavigation from '@/components/BusNavigation';
+import RecentSearch from '@/components/RecentSearch';
+import { Divider } from 'react-native-paper';
+import { useCreateSearch, useFetchSearches } from '@/api/recentSearches';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -70,8 +73,13 @@ export default function TabOneScreen() {
   const [multipleStations, setMultipleStations] = useState<boolean>(false);
   const [routeVisible, setRouteVisible] = useState<boolean>(false);
   const [busNavVisible, setBusNavVisible] = useState<boolean>(false);
+  const [recentVisible, setRecentVisible] = useState<boolean>(true);
   const [estimatedBus, setEstimatedBus] = useState<number | string | null>(null);
   const [stationVisible, setStationVisible] = useState<boolean>(false);
+  const { mutate: useNewSearch } = useCreateSearch();
+  const [searchVisible, setSearchVisible] = useState<boolean>(true);
+  const { data: searches, error: searchError } = useFetchSearches();
+  
 
 
   const [hazardMarkers, setHazardMarkers] = useState<{
@@ -81,11 +89,27 @@ export default function TabOneScreen() {
 
   const openTransportModal = () => {
     setTransportModalVisible(true); // Use the setter function to update the state
+    setSearchVisible(false);
   };
 
   const closeTransportModal = () => {
-    setTransportModalVisible(false); // Use the setter function to update the state
+    setTransportModalVisible(false);
+    setSearchVisible(false); // Use the setter function to update the state
   };
+  const handleRecentSearchPress = () => {
+    setIsFocused(false);
+    setSearchVisible(false);
+    setRouteVisible(true);
+    setTransportModalVisible(true);
+    if (!destination || !userLocation) return;
+
+    setTimeout(() => {
+      mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+        edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+    }, 200);
+
+  }
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -375,6 +399,7 @@ export default function TabOneScreen() {
   };
   const handleCancelTransportSelection = () => {
     closeTransportModal();
+    setSearchVisible(true);
     setStationVisible(false);
     setRouteVisible(false);
 
@@ -386,6 +411,9 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
+  const handleSearchPress = () => {
+    setIsFocused(true);
+  }
 
   function handleBusSelection() {
     if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
@@ -421,60 +449,82 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       {hasPermission ? (
         <>
-          <GooglePlacesAutocomplete
-            ref={searchRef}
-            placeholder="Where do you want to go?"
-            fetchDetails={true}
-            nearbyPlacesAPI="GooglePlacesSearch"
-            onPress={(data, details = null) => {
-              if (!details || !details.geometry) return;
-              dispatch(
-                setDestination({
-                  location: details.geometry.location,
-                  description: data.description,
-                }))
+          {/* Autocomplete Modal */}
+          <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
+            <View style={{ flex: 1, backgroundColor: dark ? 'black' : 'white' }}>
+              {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
+              <GooglePlacesAutocomplete
+                ref={searchRef}
+                placeholder="Where do you want to go?"
+                fetchDetails={true}
+                nearbyPlacesAPI="GooglePlacesSearch"
 
-              if (searchRef.current) {
-                searchRef.current.clear();
-              }
-              setTransportModalVisible(true);
-              openTransportModal();
-            }}
-            query={{
-              key: GOOGLE_MAPS_PLACES_LEGACY,
-              language: 'en',
-              location: userLocation
-                ? `${userLocation.latitude},${userLocation.longitude}`
-                : undefined,
-              radius: 20000, // meters
-            }}
-            onFail={error => console.error(error)}
-            styles={{
-              container: styles.topSearch,
-              textInput: [
-                styles.searchInput,
-                isFocused && styles.searchInputFocused,
-                dark && styles.searchInputDark
-              ],
-              listView:{
-                borderRadius: 6,
-              },
-              row: {
-                backgroundColor: dark ? 'black' : '#fff',
-                padding: 13,
-                height: 50,
-                flexDirection: 'row',
-              },
-              description:{color: dark ? 'white' : 'black', fontSize: 16,}
-            }}
-            textInputProps={{
-              onFocus: () => setIsFocused(true),
-              onBlur: () => setIsFocused(false),
-              placeholderTextColor: dark ? 'white' : 'black',
-            }}
-            debounce={300}
-            enablePoweredByContainer={false}
-          />
+                onPress={(data, details = null) => {
+                  if (!details || !details.geometry) return;
+                  dispatch(
+                    setDestination({
+                      location: details.geometry.location,
+                      description: data.description,
+                    }))
+                  setRouteVisible(true);
+                  openTransportModal();
+                  setSearchVisible(false);
+                  useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
+                }}
+                query={{
+                  key: GOOGLE_MAPS_PLACES_LEGACY,
+                  language: 'en',
+                  location: userLocation
+                    ? `${userLocation.latitude},${userLocation.longitude}`
+                    : undefined,
+                  radius: 20000, // meters
+                }}
+                onFail={error => console.error(error)}
+                styles={{
+                  container: styles.topSearch,
+                  textInput: [
+                    //styles.textInput,
+                    isFocused && styles.searchInputFocused,
+                    dark && styles.searchInputDark
+                  ],
+                  listView: {
+                    backgroundColor: dark ? 'black' : 'white',
+                    zIndex: 999,
+                    position: 'absolute',
+                    top: 60,
+                    borderRadius: 4,
+                  },
+                  row: {
+                    backgroundColor: dark ? 'black' : '#fff',
+                    padding: 13,
+                    height: 50,
+                    flexDirection: 'row',
+                  },
+                  description:{color: dark ? 'white' : 'black', fontSize: 16,}
+                  
+                }}
+                textInputProps={{
+                  autoFocus: true,
+                  onFocus: () => { setIsFocused(true); setRecentVisible(true) },
+                  onBlur: () => { setIsFocused(false); setRecentVisible(true) },
+                  placeholderTextColor: dark ? 'white' : 'black',
+                  onChangeText: (text) => { text === '' ? setRecentVisible(true) : setRecentVisible(false) },
+                }}
+                debounce={300}
+                enablePoweredByContainer={false}
+              />
+              {recentVisible && (
+                <FlatList
+                  data={searches}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => <RecentSearch onPress={handleRecentSearchPress} searchRef={searchRef} userSearch={item} />}
+                  contentContainerStyle={{ gap: 5 }}
+                  style={{ position: "relative", top: 170, left: 25 }}
+                  ItemSeparatorComponent={() => <Divider />}
+                />
+              )}
+            </View>
+          </Modal>
           {/* </View> */}
           <MapView
             ref={mapRef}
@@ -619,10 +669,20 @@ export default function TabOneScreen() {
               </Marker>
             ))}
           </MapView>
-
+          
+          {/* MY LOCATION BUTTON */}
           <TouchableOpacity style={styles.myLocationButton} onPress={handleMyLocationPress}>
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
+          
+          {/* SEARCH BUTTON */}
+          {searchVisible && (
+            <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
+              <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
+              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
+            </TouchableOpacity>
+          )}
+
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
             <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); }} />
@@ -654,7 +714,6 @@ export default function TabOneScreen() {
               </View>
             </View>
           </Modal>
-
           {/* Transport Selection Modal */}
           <Modal
             animationType="slide"
@@ -725,20 +784,25 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   topSearch: {
     position: "absolute",
-    top: 30,
+    top: 90,
     width: "85%",
     zIndex: 5,
-    marginTop: 60,
-    alignSelf: "center"
+    alignSelf: "center",
   },
   searchInputFocused: {
     borderWidth: 2,
     borderColor: '#0384fc',
+    height: 60,
+    borderRadius: 20,
+    paddingLeft: 25,
+    backgroundColor: "white",
+
+    width: '100%',
   },
   searchInput: {
     borderWidth: 2,
     borderColor: "gray",
-    height: 50,
+    height: 60,
     borderRadius: 25,
     paddingLeft: 25,
     backgroundColor: "white",
@@ -747,6 +811,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "white",
+  },
+  inputContainer: {
+    position: "absolute",
+    flexDirection: 'row',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginVertical: 90,
+    alignItems: 'center',
+    height: 60,
+    width: '90%',
+    zIndex: 10,
+    elevation: 15,
+    shadowRadius: 5,
+    shadowOpacity: 2,
+  },
+  inputIcon: {
+    marginLeft: 15,
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
   },
   cancelButton: {
     backgroundColor: "#ff4d4d",
