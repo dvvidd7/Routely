@@ -552,7 +552,7 @@ export default function TabOneScreen() {
                 destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor='#0384fc'
+                strokeColor='#025ef8'
               />
             )}
             {destination?.location && userLocation && routeVisible &&  (
@@ -627,7 +627,7 @@ export default function TabOneScreen() {
                   }}
                   apikey={GOOGLE_MAPS_PLACES_LEGACY}
                   strokeWidth={5}
-                  strokeColor={routeIndex === index ? '#0384fc' : 'gray'}
+                  strokeColor={routeIndex === index ? '#025ef8' : 'gray'}
                   />  
                 ))}            
               
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
   },
   searchInputFocused: {
     borderWidth: 2,
-    borderColor: '#0384fc',
+    borderColor: '#025ef8',
     height: 60,
     borderRadius: 20,
     paddingLeft: 25,
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 180,
     right: 35,
-    backgroundColor: "#0384fc",
+    backgroundColor: "#025ef8",
     borderRadius: 60,
     padding: 20,
   },

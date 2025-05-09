@@ -42,7 +42,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
           animatedStyle,
           {
             position: 'absolute',
-            backgroundColor: '#0384fc',
+            backgroundColor: '#025ef8',
             borderRadius: 30,
             marginHorizontal: 25,
             height: dimensions.height - 15,
@@ -85,7 +85,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
             isFocused={isFocused}
             routeName={route.name}
             label={label}
-            color={isFocused ? '#FFF' : '#0384fc'}
+            color={isFocused ? '#FFF' : '#025ef8'}
           />
         );
       })}

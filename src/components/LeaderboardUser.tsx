@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     points: {
       fontSize: 20,
       fontWeight: '600',
-      color: '#0384fc',
+      color: '#025ef8',
     },
 
 })
