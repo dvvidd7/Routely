@@ -48,7 +48,7 @@ const hazards: Hazard[] = [
   { id: 1, label: "Accident", icon: "🚗💥" },
   { id: 2, label: "Traffic Jam", icon: "🚦" },
   { id: 3, label: "Roadblock", icon: "🚧" },
-  { id: 4, label: "Weather Hazard", icon: "🌧️" },
+  { id: 4, label: "Ticket Inspectors", icon: "👮" },
 ];
 
 export default function TabOneScreen() {
@@ -661,7 +661,7 @@ export default function TabOneScreen() {
               )}
               {hazard.icon === '🌧️' && (
                   <Image
-                  source={require(`../../../assets/images/weather.png`)}
+                  source={require(`../../../assets/images/inspector.png`)}
                   style={{ width: 80, height: 80 }}
                   resizeMode='center'
                 />

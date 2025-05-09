@@ -39,23 +39,24 @@ export const useUpdateTransport = () => {
     })
 };
 export const useGetPoints = () => {
-    const {session} = useAuth();
+    const { session } = useAuth();
 
-    return useQuery({
+    return useQuery<number, Error>({
         queryKey: ['points'],
-        async queryFn(){
-            const {data, error} = await supabase
-            .from('profiles')
-            .select("points")
-            .eq('id', session?.user.id)
-            .single();
+        async queryFn() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select("points")
+                .eq('id', session?.user.id)
+                .single();
 
-            if(error) throw new Error(error.message);
+            if (error) throw new Error(error.message);
 
-            return data;
-        }
-    })
-}
+            // Ensure the returned value is a number
+            return data?.points ?? 0; // Default to 0 if points is undefined
+        },
+    });
+};
 export const useUpdatePoints = () => {
     const {session} = useAuth();
     const query = useQueryClient();
