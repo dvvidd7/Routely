@@ -904,7 +904,7 @@ export default function TabOneScreen() {
           {searchVisible && (
             <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
               <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
+              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to gooooo?' placeholderTextColor={dark ? 'white' : 'black'} />
             </TouchableOpacity>
           )}
           {/* BUS NAVIGATION */}
@@ -935,7 +935,7 @@ export default function TabOneScreen() {
               {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
               <GooglePlacesAutocomplete
                 ref={searchRef}
-                placeholder="Where do you want to go?"
+                placeholder="Where do you want to gooooo?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
 

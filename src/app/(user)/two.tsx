@@ -185,7 +185,7 @@ export default function TabTwoScreen() {
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
-          <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{ marginRight: 20 }} />
+          <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{ marginRight: 20, top: 5 }} />
         </View>
       </View>
 
