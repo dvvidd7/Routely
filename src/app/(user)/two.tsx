@@ -1,5 +1,5 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Entypo, Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -38,38 +38,38 @@ export default function TabTwoScreen() {
   const { data: points, error } = useGetPoints();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const { notification, setNotification } = useNotification();
-  const {isAdmin} = useAuth();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
-  const {data: getUser} = useGetUserName();
-  
-  useEffect(()=>{
+  const { data: getUser } = useGetUserName();
+
+  useEffect(() => {
     const channels = supabase.channel('custom-update-channel')
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'profiles', filter:`id=eq.${session?.user.id}` },
-      (payload) => {
-        setTransport(payload.new.fav_transport);
-      }
-    )
-    .subscribe();
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
+        (payload) => {
+          setTransport(payload.new.fav_transport);
+        }
+      )
+      .subscribe();
     return () => {
       supabase.removeChannel(channels);
     }
-  },[])
+  }, [])
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
-      if(error){console.error('Error fetching user: ', error.message); return;}
+      if (error) { console.error('Error fetching user: ', error.message); return; }
 
       if (user) {
         setEmail(user.email ?? '');
       }
       if (!getUser) {
-        if(!dataUsername) return;
+        if (!dataUsername) return;
         setUsername(dataUsername);
       }
-      else{
+      else {
         setUsername(getUser.username);
       }
 
@@ -79,19 +79,19 @@ export default function TabTwoScreen() {
     };
     fetchUser();
   }, []);
-  useEffect(()=>{
-    
+  useEffect(() => {
+
     const channels = supabase.channel('profiles-update-channel')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
-      (payload) => {
-        setUsername((payload.new as { username: string }).username);
-        queryClient.invalidateQueries({queryKey: ['users']});
-        queryClient.invalidateQueries({queryKey: ['username']});
-      }
-    )
-    .subscribe()
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
+        (payload) => {
+          setUsername((payload.new as { username: string }).username);
+          queryClient.invalidateQueries({ queryKey: ['users'] });
+          queryClient.invalidateQueries({ queryKey: ['username'] });
+        }
+      )
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channels);
@@ -162,7 +162,7 @@ export default function TabTwoScreen() {
         {item.value === transport && (
           <AntDesign
             style={styles.icon}
-            color={isDarkMode ? '#0384fc' : 'black'}
+            color={isDarkMode ? '#025ef8' : 'black'}
             name="check"
             size={20}
           />
@@ -172,31 +172,33 @@ export default function TabTwoScreen() {
   };
   const navigation = useNavigation();
 
+
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
+    <ScrollView
+      contentContainerStyle={{ flexGrow: 1 }}
+      style={[styles.container, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}
+    >
       <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
         Account
       </Text>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable style={{ ...styles.viewLeader, backgroundColor: dark ? '#333333' : 'gainsboro' }} onPress={() => setModalVisible(true)}>
+        <Pressable style={{ ...styles.viewLeader, backgroundColor: 'transparent' }} onPress={() => setModalVisible(true)}>
           <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
           <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
-          <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{ marginRight: 20 }} />
+          <MaterialCommunityIcons name='star-four-points' color={'#025ef8'} size={30} style={{ marginRight: 20 }} />
         </View>
       </View>
-
 
       {/* LEADERBOARD MODAL */}
       <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)} animationType='slide'>
         <View style={{ ...styles.modal, backgroundColor: dark ? 'black' : 'white' }}>
-          {/* {LeaderboardUser(profile)} */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 60 }}>
             <Pressable onPress={() => setModalVisible(false)}>
-              <Feather name={'arrow-left'} size={40} color={'#0384fc'} />
+              <Feather name={'arrow-left'} size={40} color={'#025ef8'} />
             </Pressable>
           </View>
 
@@ -210,21 +212,23 @@ export default function TabTwoScreen() {
             style={{ marginTop: 25 }}
             data={users}
             renderItem={({ item, index }) => {
-              return <LeaderboardUser index={index} userN={item} />
+              return <LeaderboardUser index={index} userN={item} />;
             }}
             contentContainerStyle={{ gap: 10 }}
           />
         </View>
       </Modal>
 
-
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-      {isAdmin && (
-              <View style={styles.adminPage}>
-              <TouchableOpacity onPress={()=>router.push('(admin)')} ><Text style={styles.adminText}>Go to admin page</Text></TouchableOpacity>
-            </View>
-      )}
+        {isAdmin && (
+          <View style={styles.adminPage}>
+            <TouchableOpacity onPress={() => router.push('(admin)')}>
+              <Text style={styles.adminText}>Go to admin page</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
+        {/* Username and Email Section */}
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
             {username}
@@ -255,10 +259,12 @@ export default function TabTwoScreen() {
             </Pressable>
           </>
         )}
+
+        {/* Dropdown and Switches */}
         {!isEditing && (
           <View style={styles.dropdownContainer}>
             <Dropdown
-              style={[styles.dropdown, isDarkMode && styles.dropdownDark, isFocus && { borderColor: '#0384fc' }]}
+              style={[styles.dropdown, isDarkMode && styles.dropdownDark, isFocus && { borderColor: '#025ef8' }]}
               placeholderStyle={[styles.placeholderStyle, isDarkMode && { color: 'white' }]}
               selectedTextStyle={[styles.selectedTextStyle, isDarkMode && { color: 'white' }]}
               inputSearchStyle={styles.inputSearchStyle}
@@ -271,24 +277,24 @@ export default function TabTwoScreen() {
               value={transport}
               onFocus={() => setIsFocus(true)}
               onBlur={() => setIsFocus(false)}
-              onChange={item => {
-                updateTransport({ fav_transport: item.value});
+              onChange={(item) => {
+                updateTransport({ fav_transport: item.value });
                 setTransport(transport);
                 setIsFocus(false);
               }}
-              renderLeftIcon={() => transport === 'bus' ? (
-                <FontAwesome style={styles.icon} color={'#0384fc'} name='bus' size={20} />
-                
-                // <FontAwesome style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name={transport === "bus" ? "bus" : "car"} size={20} />
-              ) : (
-                <AntDesign style={styles.icon} color={'#0384fc'} name="car" size={20} />
-              )}
+              renderLeftIcon={() =>
+                transport === 'bus' ? (
+                  <FontAwesome style={styles.icon} color={'#025ef8'} name="bus" size={20} />
+                ) : (
+                  <AntDesign style={styles.icon} color={'#025ef8'} name="car" size={20} />
+                )
+              }
               renderItem={renderItem}
             />
             <View style={styles.switchContainer}>
               <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Dark Mode</Text>
               <Switch
-                trackColor={{ false: '#767577', true: '#0384fc' }}
+                trackColor={{ false: '#767577', true: '#025ef8' }}
                 thumbColor={isDarkMode ? '#f4f3f4' : '#f4f3f4'}
                 ios_backgroundColor="#3e3e3e"
                 onValueChange={toggleTheme}
@@ -298,11 +304,11 @@ export default function TabTwoScreen() {
             <View style={styles.notificationSwitchContainer}>
               <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Notifications</Text>
               <Switch
-                trackColor={{ false: '#767577', true: '#0384fc' }}
+                trackColor={{ false: '#767577', true: '#025ef8' }}
                 thumbColor={notification ? '#f4f3f4' : '#f4f3f4'}
                 ios_backgroundColor="#3e3e3e"
-                onValueChange={(value) => setNotification(value)} // Toggle the notification state
-                value={notification} // Bind the state to the Switch
+                onValueChange={(value) => setNotification(value)}
+                value={notification}
               />
             </View>
             <View>
@@ -318,7 +324,7 @@ export default function TabTwoScreen() {
           </View>
         )}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -326,16 +332,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  adminPage:{
-    backgroundColor: '#0384fc',
+  adminPage: {
+    backgroundColor: '#025ef8',
     width: '40%',
     borderRadius: 5,
     padding: 10,
     bottom: 80,
     right: 120,
-    alignItems:'center'
+    alignItems: 'center'
   },
-  adminText:{
+  adminText: {
     fontWeight: '500',
     fontSize: 15,
   },
@@ -351,6 +357,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 10
   },
   viewLeader: {
     flexDirection: 'row',
@@ -365,10 +372,10 @@ const styles = StyleSheet.create({
   usernameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10, // Adjust this value as needed to move the username closer to the email
+    marginBottom: 10,
   },
   usernameContainerEditing: {
-    marginBottom: 20, // Adjust this value as needed to move the username closer to the TextInput
+    marginBottom: 20,
   },
   username: {
     fontSize: 40,
@@ -389,7 +396,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   button: {
-    backgroundColor: '#0384fc',
+    backgroundColor: '#025ef8',
     padding: 13,
     borderRadius: 30,
     marginBottom: 30,
@@ -468,7 +475,8 @@ const styles = StyleSheet.create({
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 58,
+    marginTop: 20,
     alignSelf: 'center',
     bottom: 40,
   },
@@ -501,11 +509,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
     bottom: 30,
   },
   feedbackText: {
-    color: '#0384fc',
+    color: '#025ef8',
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
