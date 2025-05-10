@@ -1031,7 +1031,19 @@ export default function TabOneScreen() {
                       style={[styles.hazardOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
                       onPress={() => handleSelectHazard(hazard)}
                     >
-                      <Text style={styles.hazardIcon}>{hazard.icon}</Text>
+                    {hazard.label === "Traffic Jam" && (
+                      <Image source={require('../../../assets/images/jam.png')} style={styles.hazardLogo} />
+                    )}
+                    {hazard.label === "Roadblock" && (
+                      <Image source={require('../../../assets/images/roadblocklogo.png')} style={styles.hazardLogo} />
+                    )}
+                    {hazard.label === "Ticket inspectors" && (
+                      <Image source={require('../../../assets/images/inspectorlogo.png')} style={styles.hazardLogo} />
+                    )}
+                    {hazard.label === "Accident" && (
+                      <Image source={require('../../../assets/images/accidentlogo.png')} style={styles.hazardLogo} />
+                    )}
+                      {/* <Text style={styles.hazardIcon}>{hazard.icon}</Text> */}
                       <Text style={[styles.hazardLabel, { color: dark ? "white" : "black" }]}>{hazard.label}</Text>
                     </TouchableOpacity>
                   ))}
@@ -1252,6 +1264,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
+  
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
@@ -1268,6 +1281,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
+  },
+  hazardLogo:{
+    width: 60,
+    height: 60,
+    marginBottom: 10,
   },
   modalTitle: {
     fontSize: 25,
