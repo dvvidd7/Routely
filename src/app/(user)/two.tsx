@@ -181,6 +181,11 @@ export default function TabTwoScreen() {
         {
           text: 'Yes',
           onPress: async () => {
+            setUsername('');
+            setEmail('');
+            setTransport('');
+            setNewUsername('');
+            queryClient.clear();
             await supabase.auth.signOut();
             router.push('/sign-in');
           }
