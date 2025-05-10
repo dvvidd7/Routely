@@ -31,21 +31,36 @@ export default function AuthProvider({children}: PropsWithChildren)
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<Profile | null>(null);
-
+    const loadUserProfile =  async (userId : string) => {
+        const {data} = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        setProfile(data || null);
+    }
     useEffect(()=>{
         const fetchSession = async() =>{
            const {data:{session}} = await supabase.auth.getSession()
            setSession(session);
            if(session){
-                const {data} = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-                setProfile(data || null);
+                loadUserProfile(session.user.id)
            }
            setLoading(false);
         };
         fetchSession();
-        supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-          });
+        const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        setSession(session);
+        if (session?.user.id) {
+            await loadUserProfile(session.user.id);
+        } else {
+            setProfile(null); 
+        }
+        });
+
+        return () => {
+            subscription.subscription.unsubscribe();
+        }
 
     }, []);
     return (

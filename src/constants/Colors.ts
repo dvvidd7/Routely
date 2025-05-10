@@ -7,6 +7,7 @@ export default {
     background: '#fff',
     tint: tintColorLight,
     themeColor: '#0384fc',
+    themeColorDarker: '#025ef8',
     tabIconDefault: '#ccc',
     tabIconSelected: tintColorLight,
   },

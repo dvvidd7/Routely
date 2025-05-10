@@ -22,12 +22,12 @@ const SquareButton = forwardRef<View | null, ButtonProps>(
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.light.themeColor,
+    backgroundColor: Colors.light.themeColorDarker,
     paddingTop: 20,
     padding: 30,
     width: 200,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 50,
     marginVertical: 10,
     borderWidth: 3,
   },
