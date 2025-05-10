@@ -21,6 +21,7 @@ import BusNavigation from '@/components/BusNavigation';
 import * as Notifications from 'expo-notifications';
 import { useNotification } from '@/providers/NotificationContext';
 import { Divider } from 'react-native-paper';
+import Colors from '@/constants/Colors';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -270,7 +271,7 @@ export default function TabOneScreen() {
     }
   }, [stationVisible, routeStops]);
 
-  { loadingRoute && <ActivityIndicator size="large" color="#025ef8" /> }
+  { loadingRoute && <ActivityIndicator size="large" color={Colors.light.themeColorDarker} /> }
 
   useEffect(() => {
     if (notification) {
@@ -787,7 +788,7 @@ export default function TabOneScreen() {
                 destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor='#025ef8'
+                strokeColor={Colors.light.themeColorDarker}
               />
             )}
             {destination?.location && userLocation && routeVisible && (
@@ -862,7 +863,7 @@ export default function TabOneScreen() {
                 }}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor={routeIndex === index ? '#025ef8' : 'gray'}
+                strokeColor={routeIndex === index ? Colors.light.themeColorDarker : 'gray'}
               />
             ))}
 
@@ -908,7 +909,7 @@ export default function TabOneScreen() {
           {searchVisible && (
             <TouchableOpacity onPress={handleSearchPress} style={{ ...styles.inputContainer, backgroundColor: dark ? 'black' : 'white' }}>
               <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to gooooo?' placeholderTextColor={dark ? 'white' : 'black'} />
+              <TextInput editable={false} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} placeholder='Where do you want to go?' placeholderTextColor={dark ? 'white' : 'black'} />
             </TouchableOpacity>
           )}
           {/* BUS NAVIGATION */}
@@ -939,7 +940,7 @@ export default function TabOneScreen() {
               {/* <Feather name='search' size={24} color={'#9A9A9A'} style={styles.inputIcon} /> */}
               <GooglePlacesAutocomplete
                 ref={searchRef}
-                placeholder="Where do you want to gooooo?"
+                placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
 
@@ -1123,7 +1124,7 @@ const styles = StyleSheet.create({
   },
   searchInputFocused: {
     borderWidth: 2,
-    borderColor: '#025ef8',
+    borderColor: Colors.light.themeColorDarker,
     height: 60,
     borderRadius: 20,
     paddingLeft: 25,
@@ -1217,7 +1218,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 180,
     right: 35,
-    backgroundColor: "#025ef8",
+    backgroundColor: Colors.light.themeColorDarker,
     borderRadius: 60,
     padding: 20,
     elevation: 10,

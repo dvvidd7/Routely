@@ -146,11 +146,11 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     topImageContainer:{
-
+      
     },
     topImage:{
         width:'100%',
-        height: 120,
+        height: 150,
     },
     textContainer:{
     },
