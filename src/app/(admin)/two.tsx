@@ -169,7 +169,7 @@ export default function TabTwoScreen() {
           <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
+          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points}</Text>
           <MaterialCommunityIcons name='star-four-points' color={'#025ef8'} size={30} style={{ marginRight: 20 }} />
         </View>
       </View>

@@ -1,5 +1,5 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Entypo, Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import LeaderboardUser from '@/components/LeaderboardUser';
 import { useNotification } from '@/providers/NotificationContext';
+import * as Notifications from 'expo-notifications';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -20,6 +21,12 @@ const data = [
   { label: 'Both', value: 'both' },
 ];
 
+const badges = [
+  { id: 1, name: "Eco Starter", points: 100, image: require('assets/images/100points.png') },
+  { id: 2, name: "Green Commuter", points: 500, image: require('assets/images/500points.png') },
+  { id: 3, name: "Planet Saver", points: 1000, image: require('assets/images/plantLover.png') },
+  { id: 4, name: "Eco Hero", points: 2000, image: require('assets/images/planetLover.png') },
+];
 
 export default function TabTwoScreen() {
   const { dark } = useTheme();
@@ -41,6 +48,15 @@ export default function TabTwoScreen() {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const { data: getUser } = useGetUserName();
+  const earnedBadges = points
+    ? badges.filter((badge) => typeof badge.points === 'number' && typeof points === 'number' && points >= badge.points)
+    : [];
+  const lockedBadges = badges.filter((badge) => typeof badge.points === 'number' && typeof points === 'number' && points < badge.points);
+  const hasBadge = (badgePoints: number, userPoints: number | undefined): boolean => {
+    return typeof userPoints === 'number' && userPoints >= badgePoints;
+  };
+  const [previousPoints, setPreviousPoints] = useState<number | null>(null);
+
 
   useEffect(() => {
     const channels = supabase.channel('custom-update-channel')
@@ -56,6 +72,32 @@ export default function TabTwoScreen() {
       supabase.removeChannel(channels);
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof points === 'number' && previousPoints !== null) {
+      // Find newly unlocked badges
+      const newlyUnlockedBadges = badges.filter(
+        (badge) => points >= badge.points && (previousPoints < badge.points)
+      );
+
+      // Notify the user about newly unlocked badges
+      if (newlyUnlockedBadges.length > 0) {
+        const badgeNames = newlyUnlockedBadges.map((badge) => badge.name).join(', ');
+
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🏅New badge unlocked!",
+            body: `You got ${badgeNames} for making the planet a better place.`,
+            sound: "default",
+          },
+          trigger: null,
+        });
+      }
+    }
+
+    // Update previous points
+    setPreviousPoints(points ?? null);
+  }, [points]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -175,9 +217,10 @@ export default function TabTwoScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }}
-      style={[styles.container, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      style={{ flex: 1, backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }}
     >
+
       <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
         Account
       </Text>
@@ -188,7 +231,7 @@ export default function TabTwoScreen() {
           <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
+          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points}</Text>
           <MaterialCommunityIcons name='star-four-points' color={'#025ef8'} size={30} style={{ marginRight: 20, top: 5 }} />
         </View>
       </View>
@@ -218,6 +261,33 @@ export default function TabTwoScreen() {
           />
         </View>
       </Modal>
+
+      {/*BADGES*/}
+      <View style={styles.badgeContainer}>
+        <Text style={[styles.badgeTitle, { color: dark ? "white" : "black" }]}>Your Badges</Text>
+        <FlatList
+          data={badges}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.badgeItem}>
+              <Image
+                source={item.image}
+                style={StyleSheet.flatten([
+                  styles.badgeImage,
+                  typeof points === 'number' && points >= item.points ? styles.badgeEarned : styles.badgeLocked,
+                  hasBadge(item.points, points) ? styles.badgeEarned : styles.badgeLocked,
+                ])}
+              />
+              <Text style={[styles.badgeName,{ color: dark ? "white" : "black" }]}>{item.name}</Text>
+              <Text style={[styles.badgePoints,{ color: dark ? "white" : "black" }]}>
+                {typeof points === 'number' && points >= item.points ? "Unlocked" : `Unlock at ${item.points} points`}
+              </Text>
+            </View>
+          )}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        />
+      </View>
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
         {isAdmin && (
@@ -330,20 +400,20 @@ export default function TabTwoScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1, // Ensures the content can grow and scroll properly
   },
   adminPage: {
     backgroundColor: '#025ef8',
-    width: '40%',
-    borderRadius: 5,
-    padding: 10,
-    bottom: 80,
-    right: 120,
-    alignItems: 'center'
+    width: '30%',
+    borderRadius: 2,
+    padding: 8,
+    bottom: 305,
+    left: 120,
+    alignItems: 'center',
   },
   adminText: {
     fontWeight: '500',
-    fontSize: 15,
+    fontSize: 10,
   },
   text: {
     fontSize: 40,
@@ -372,6 +442,7 @@ const styles = StyleSheet.create({
   usernameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 15,
     marginBottom: 10,
   },
   usernameContainerEditing: {
@@ -519,5 +590,50 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     bottom: 40,
+  },
+  ecoMessageContainer: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#e0f7e9',
+    borderRadius: 10,
+  },
+  ecoMessage: {
+    fontSize: 16,
+    color: '#2e7d32',
+    textAlign: 'center',
+  },
+  badgeContainer: {
+    marginTop: 50,
+  },
+  badgeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  badgeItem: {
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  badgeImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 5,
+  },
+  badgeEarned: {
+    opacity: 1,
+  },
+  badgeLocked: {
+    opacity: 0.3,
+  },
+  badgeName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  badgePoints: {
+    fontSize: 14,
+    color: '#757575',
+    textAlign: 'center',
   },
 });

@@ -55,7 +55,7 @@ const hazards: Hazard[] = [
   { id: 1, label: "Accident", icon: "🚗💥" },
   { id: 2, label: "Traffic Jam", icon: "🚦" },
   { id: 3, label: "Roadblock", icon: "🚧" },
-  { id: 4, label: "Weather Hazard", icon: "🌧️" },
+  { id: 4, label: "Ticket inspectors", icon: "👮" },
 ];
 
 export default function TabOneScreen() {
@@ -412,7 +412,7 @@ export default function TabOneScreen() {
       // Filter out hazards older than 2 hours
       const now = new Date();
 
-      if(!data)return [];
+      if (!data) return [];
       const filteredHazards = Array.isArray(data)
         ? data.filter((hazard) => {
           const hazardTime = new Date(hazard.created_at);
@@ -465,7 +465,7 @@ export default function TabOneScreen() {
             const hazardTime = new Date(hazard.created_at);
 
             if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
-              setHazardMarkers((prev) => [
+              setHazardMarkers((prev: typeof hazardMarkers) => [
                 ...prev,
                 {
                   id: hazard.id,
@@ -567,7 +567,7 @@ export default function TabOneScreen() {
         // console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
 
         // Filter transit steps (case-insensitive, and ensure transit_details exists)
-        if(!steps)return [];
+        if (!steps) return [];
         const transitSteps = steps.filter(
           (step: any) =>
             step?.travel_mode?.toUpperCase() === "TRANSIT" && step?.transit_details
@@ -651,7 +651,7 @@ export default function TabOneScreen() {
     }
   };
 
-  const handleControlPanelButton = () => {
+  const handleHazardPanelButton = () => {
     setModalVisible(true);
   };
 
@@ -895,9 +895,9 @@ export default function TabOneScreen() {
                     resizeMode='center'
                   />
                 )}
-                {hazard.icon === '🌧️' && (
+                {hazard.icon === '👮' && (
                   <Image
-                    source={require(`../../../assets/images/weather.png`)}
+                    source={require(`../../../assets/images/inspector.png`)}
                     style={{ width: 80, height: 80 }}
                     resizeMode='center'
                   />
@@ -928,7 +928,7 @@ export default function TabOneScreen() {
               styles.HazardButton,
               { backgroundColor: dark ? "black" : "white" }
             ]}
-            onPress={handleControlPanelButton}
+            onPress={handleHazardPanelButton}
           >
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
@@ -985,8 +985,8 @@ export default function TabOneScreen() {
                     height: 50,
                     flexDirection: 'row',
                   },
-                  description:{color: dark ? 'white' : 'black', fontSize: 16,}
-                  
+                  description: { color: dark ? 'white' : 'black', fontSize: 16, }
+
                 }}
                 textInputProps={{
                   autoFocus: true,
@@ -1013,15 +1013,29 @@ export default function TabOneScreen() {
 
 
           {/* Hazard Selection Modal */}
-          <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(false)}
+          >
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
-                <Text style={styles.modalTitle}>Select a Hazard</Text>
-                {hazards.map((hazard) => (
-                  <TouchableOpacity key={hazard.id} style={styles.optionButton} onPress={() => handleSelectHazard(hazard)}>
-                    <Text style={styles.optionText}>{hazard.icon} {hazard.label}</Text>
-                  </TouchableOpacity>
-                ))}
+                <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
+                  Select a Hazard
+                </Text>
+                <View style={styles.hazardGrid}>
+                  {hazards.map((hazard) => (
+                    <TouchableOpacity
+                      key={hazard.id}
+                      style={[styles.hazardOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+                      onPress={() => handleSelectHazard(hazard)}
+                    >
+                      <Text style={styles.hazardIcon}>{hazard.icon}</Text>
+                      <Text style={[styles.hazardLabel, { color: dark ? "white" : "black" }]}>{hazard.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
@@ -1173,6 +1187,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
+    top: -80
   },
   optionText: {
     fontSize: 16,
@@ -1187,7 +1202,7 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     backgroundColor: "#eee",
-    padding: 15,
+    padding: 10,
     width: "100%",
     borderRadius: 10,
     alignItems: "center",
@@ -1240,23 +1255,56 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0)",
   },
   modalContent: {
-    padding: 16,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    padding: 20,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
     width: "100%",
-    alignItems: 'center'
+    height: '53%',
+    alignItems: "center",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 25,
     fontWeight: "bold",
     textAlign: "center",
+    marginBottom: 20,
+  },
+  hazardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  hazardOption: {
+    width: "48%",
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  hazardIcon: {
+    fontSize: 40,
     marginBottom: 10,
   },
+  hazardLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
   hazardButtonOptions: {
-    padding: 15,
+    padding: 12,
     marginVertical: 5,
     backgroundColor: "#ddd",
     borderRadius: 15,
@@ -1268,7 +1316,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   closeButton: {
-    marginTop: 10,
+    marginTop: 0,
     padding: 10,
     backgroundColor: "#ff4d4d",
     borderRadius: 10,
@@ -1278,6 +1326,22 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold"
   },
+  circularIcon: {
+    width: 60, // Equal width and height
+    height: 60,
+    borderRadius: 30, // Half of the width/height to make it circular
+    justifyContent: "center", // Center the content horizontally
+    alignItems: "center", // Center the content vertically
+    backgroundColor: "#f0f0f0", // Background color for the circle
+    elevation: 5, // Shadow for Android
+    shadowColor: "#000", // Shadow for iOS
+    shadowOffset: { width: 0, height: 2 }, // Shadow offset
+    shadowOpacity: 0.2, // Shadow opacity
+    shadowRadius: 4, // Shadow radius
+  },
+  circularIconDark: {
+    backgroundColor: "#1c1c1c", // Dark mode background color
+  },
   rideOption: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1285,8 +1349,8 @@ const styles = StyleSheet.create({
     padding: 15,
     marginVertical: 10,
     borderRadius: 10,
-    elevation: 2, // Adds shadow for Android
-    shadowColor: "#000", // Adds shadow for iOS
+    elevation: 2,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
