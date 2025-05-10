@@ -56,6 +56,11 @@ export default function TabTwoScreen() {
     return typeof userPoints === 'number' && userPoints >= badgePoints;
   };
   const [previousPoints, setPreviousPoints] = useState<number | null>(null);
+  const getHighestBadge = (userPoints: number) => {
+    return badges
+      .filter((badge) => userPoints >= badge.points)
+      .sort((a, b) => b.points - a.points)[0];
+  };
 
 
   useEffect(() => {
@@ -226,9 +231,9 @@ export default function TabTwoScreen() {
       </Text>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable style={{ ...styles.viewLeader, backgroundColor: 'transparent' }} onPress={() => setModalVisible(true)}>
+        <Pressable style={{ ...styles.viewLeader, backgroundColor: '#025ef8',}} onPress={() => setModalVisible(true)}>
           <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
-          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
+          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: 'white'}}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points}</Text>
@@ -255,7 +260,14 @@ export default function TabTwoScreen() {
             style={{ marginTop: 25 }}
             data={users}
             renderItem={({ item, index }) => {
-              return <LeaderboardUser index={index} userN={item} />;
+              const highestBadge = getHighestBadge(item.points);
+              return (
+                <LeaderboardUser
+                  index={index}
+                  userN={item}
+                  badge={highestBadge}
+                />
+              );
             }}
             contentContainerStyle={{ gap: 10 }}
           />
@@ -278,8 +290,8 @@ export default function TabTwoScreen() {
                   hasBadge(item.points, points) ? styles.badgeEarned : styles.badgeLocked,
                 ])}
               />
-              <Text style={[styles.badgeName,{ color: dark ? "white" : "black" }]}>{item.name}</Text>
-              <Text style={[styles.badgePoints,{ color: dark ? "white" : "black" }]}>
+              <Text style={[styles.badgeName, { color: dark ? "white" : "black" }]}>{item.name}</Text>
+              <Text style={[styles.badgePoints, { color: dark ? "white" : "black" }]}>
                 {typeof points === 'number' && points >= item.points ? "Unlocked" : `Unlock at ${item.points} points`}
               </Text>
             </View>
@@ -383,7 +395,10 @@ export default function TabTwoScreen() {
             </View>
             <View>
               <Pressable onPress={handleLogout} style={styles.logoutButton}>
-                <Text style={styles.logoutText}>Log Out</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialCommunityIcons name="logout" size={20} color="red" style={{ marginRight: 5, bottom:45 }} />
+                  <Text style={styles.logoutText}>Log Out</Text>
+                </View>
               </Pressable>
             </View>
             <View>
@@ -407,7 +422,7 @@ const styles = StyleSheet.create({
     width: '30%',
     borderRadius: 2,
     padding: 8,
-    bottom: 305,
+    bottom: 317,
     left: 120,
     alignItems: 'center',
   },
@@ -433,8 +448,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     left: 20,
     backgroundColor: 'gainsboro',
-    borderRadius: 5,
-    padding: 5,
+    borderRadius: 25, 
+    padding: 11, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    elevation: 5, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5, 
+    shadowRadius: 4, 
   },
   modal: {
     flex: 1,
