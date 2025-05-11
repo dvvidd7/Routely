@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Image, TextInput, Pressable, Alert, ImageBackground, TouchableOpacity } from 'react-native';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Stack } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -19,6 +19,8 @@ export default function SignIn() {
   const router = useRouter();
   const { dark } = useTheme();
   const [loading, setLoading] = useState(false);
+    const emailInputRef = useRef<TextInput>(null);
+    const passInputRef = useRef<TextInput>(null);
   const resetFields = () => {
     setEmail('');
     setPassword('');
@@ -61,12 +63,12 @@ export default function SignIn() {
 
       <View style={{ ...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0 }}>
         <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={email} onChangeText={setEmail} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
+        <TextInput ref={emailInputRef} onSubmitEditing={() => {passInputRef.current?.focus()}} submitBehavior='blurAndSubmit' returnKeyType='next' cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={email} onChangeText={setEmail} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
 
       <View style={{ ...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0 }}>
         <FontAwesome name='lock' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={password} onChangeText={setPassword} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
+        <TextInput ref={passInputRef} returnKeyType='next' cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={password} onChangeText={setPassword} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
         <Pressable onPress={() => { hidden ? setHidden(false) : setHidden(true) }}>
           <FontAwesome name={hidden ? 'eye' : 'eye-slash'} size={24} color={'#9A9A9A'} style={styles.hiddenIcon} />
         </Pressable>

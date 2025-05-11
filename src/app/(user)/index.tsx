@@ -22,6 +22,7 @@ import * as Notifications from 'expo-notifications';
 import { useNotification } from '@/providers/NotificationContext';
 import { Divider } from 'react-native-paper';
 import Colors from '@/constants/Colors';
+import { useAuth } from '@/providers/AuthProvider';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -110,7 +111,6 @@ export default function TabOneScreen() {
     if (routeIndex <= 0) return console.warn("Reached end of stations!");
     setRouteIndex(routeIndex - 1);
   };
-
   const closeTransportModal = () => {
     setTransportModalVisible(false);
     setSearchVisible(false);

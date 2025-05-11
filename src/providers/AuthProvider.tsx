@@ -7,7 +7,7 @@ import { Tables } from "types/database.types";
 type AuthData={
     session: Session | null
     loading: boolean
-    profile: any,
+    profile: Profile | null,
     isAdmin: boolean,
     user: string | null | undefined,
 };
@@ -25,6 +25,7 @@ type ProfileDB = {
 type Profile = {
     group: string | null,
     username: string | null,
+    fav_transport: string | null,
 }
 export default function AuthProvider({children}: PropsWithChildren)
 {
@@ -32,16 +33,19 @@ export default function AuthProvider({children}: PropsWithChildren)
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<Profile | null>(null);
     const loadUserProfile =  async (userId : string) => {
+        setLoading(true);
         const {data} = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single();
         setProfile(data || null);
+        setLoading(false);
     }
     useEffect(()=>{
         const fetchSession = async() =>{
-           const {data:{session}} = await supabase.auth.getSession()
+            setLoading(true);
+           const {data:{session}} = await supabase.auth.getSession();
            setSession(session);
            if(session){
                 loadUserProfile(session.user.id)

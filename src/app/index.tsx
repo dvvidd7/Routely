@@ -8,11 +8,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const index = () => {
   const {session, loading, isAdmin} = useAuth();
-
+console.warn("isAdmin: " + isAdmin);
+console.warn("Loading: " + loading);
   if(loading)
-    {
-      return<ActivityIndicator/>;
-    }
+  {
+    return<ActivityIndicator/>;
+  }
 
   if(!session) {
     return <Redirect href={'/sign-in'}/>
@@ -20,7 +21,6 @@ const index = () => {
   if(!isAdmin){
     return <Redirect href={'/(user)'} />
   }
-
   return (
     <View style={{flex: 1}}>
       <ImageBackground style={{flex: 1}} resizeMode='cover' source={require('../../assets/images/citystreets.jpeg')}>

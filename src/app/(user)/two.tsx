@@ -120,7 +120,7 @@ export default function TabTwoScreen() {
         setUsername(getUser.username);
       }
 
-      if (profile.fav_transport) {
+      if (profile?.fav_transport) {
         setTransport(profile.fav_transport);
       }
     };
@@ -318,7 +318,7 @@ export default function TabTwoScreen() {
         {/* Username and Email Section */}
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
-            {username}
+            {getUser?.username}
           </Text>
           <Pressable onPress={handlePencilPress}>
             <FontAwesome name="edit" size={18} color={isDarkMode ? 'white' : 'black'} style={styles.pencilIcon} />

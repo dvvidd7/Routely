@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Image, TextInput, Pressable, Alert, ImageBackground } from 'react-native';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Stack } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -21,29 +21,31 @@ export default function SignIn() {
     const router = useRouter();
     const os = Platform.OS;
     const [loading, setLoading] = useState(false);
+    const emailInputRef = useRef<TextInput>(null);
+    const passInputRef = useRef<TextInput>(null);
 
     const forgotPass = async () => {
-        if (!email) {
-          Alert.alert("Error", "Please enter your email address.");
-          return;
+      if (!email) {
+        Alert.alert("Error", "Please enter your email address.");
+        return;
+      }
+    
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+    
+        if (error) {
+          Alert.alert("Error", error.message);
+        } else {
+          Alert.alert(
+            "Success",
+            "A password reset link has been sent to your email address."
+          );
         }
-      
-        try {
-          const { error } = await supabase.auth.resetPasswordForEmail(email);
-      
-          if (error) {
-            Alert.alert("Error", error.message);
-          } else {
-            Alert.alert(
-              "Success",
-              "A password reset link has been sent to your email address."
-            );
-          }
-        } catch (err) {
-          console.error("Error sending password reset email:", err);
-          Alert.alert("Error", "An unexpected error occurred. Please try again.");
-        }
-      };
+      } catch (err) {
+        console.error("Error sending password reset email:", err);
+        Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      }
+    };
     // const onSignIn = () => {
     //     console.log(`Sign in detected: ${email} ${password} `);
     //     resetFields();
@@ -51,18 +53,18 @@ export default function SignIn() {
     const resetFields = () => {
         setEmail('');
         setPassword('');
-      };
-      async function signInWithEmail() {
-        setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-    
-        if (error) {
-            Alert.alert(error.message);
-            setLoading(false);
-        } else {
-            // Redirect to the index page after successful sign-in
-            router.push('../(user)');
-        }
+    };
+
+    async function signInWithEmail() {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+          Alert.alert(error.message);
+          setLoading(false);
+      } else {
+          router.push('../../');
+      }
     }
 
     useEffect(() => {
@@ -101,12 +103,12 @@ export default function SignIn() {
 
       <View style={{...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0}}>
         <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput cursorColor={dark ? 'white' : 'black'} value={email} onChangeText={setEmail} style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
+        <TextInput ref={emailInputRef} onSubmitEditing={() => {passInputRef.current?.focus()}} submitBehavior='blurAndSubmit' returnKeyType='next' cursorColor={dark ? 'white' : 'black'} value={email} onChangeText={setEmail} style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
 
       <View style={{...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0}}>
         <FontAwesome name='lock' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput cursorColor={dark ? 'white' : 'black'} value={password} onChangeText={setPassword} style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
+        <TextInput ref={passInputRef} returnKeyType='done' cursorColor={dark ? 'white' : 'black'} value={password} onChangeText={setPassword} style={{...styles.textInput, color: dark ? 'white' : 'black'}} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
         <Pressable onPress={()=>{hidden ? setHidden(false) : setHidden(true)}}>
             <FontAwesome name={hidden ? 'eye' : 'eye-slash'} size={24} color={'#9A9A9A'} style={styles.hiddenIcon} />
         </Pressable>
