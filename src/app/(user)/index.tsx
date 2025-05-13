@@ -30,6 +30,12 @@ const INITIAL_REGION = {
   latitudeDelta: 1,
   longitudeDelta: 1,
 };
+type Region = {
+  latitude: any,
+  longitude: any,
+  latitudeDelta: any,
+  longitudeDelta: any,
+}
 
 type Station = {
   transit_details: { departure_stop: { name: any; location: { lat: any; lng: any; }; }; arrival_stop: { name: any; location: { lat: any; lng: any; }; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; };
@@ -65,7 +71,7 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const { transportModalVisible, setTransportModalVisible } = useTransportModal();
+  const { transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const mapRef = useRef<MapView>(null);
@@ -84,6 +90,10 @@ export default function TabOneScreen() {
   const [isMapReady, setIsMapReady] = useState(false);
   const [routeIndex, setRouteIndex] = useState<number>(0);
   const [multipleStations, setMultipleStations] = useState<boolean>(false);
+  const [fakeMarkerShadow, setFakeMarkerShadow] = useState<boolean>(false);
+  const [pinOrigin, setPinOrigin] = useState<Region>();
+  const [displayMarker, setDisplayMarker] = useState<boolean>(false);
+  const [pinpointDetails, setPinpointDetails] = useState<string>('');
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -98,10 +108,10 @@ export default function TabOneScreen() {
     Uber: { price: string; time: number };
     RealTime: { googleDuration: number; distance: number };
   } | null>(null);
-
+  
   const openTransportModal = () => {
     setTransportModalVisible(true);
-    setSearchVisible(true);
+    setSearchVisible(false);
   };
   const handleRouteIndexIncrease = () => {
     if (routeStops.length - 1 <= routeIndex) return console.warn("Reached end of stations!");
@@ -631,6 +641,8 @@ export default function TabOneScreen() {
     else setEstimatedBus('-');
   }, [routeStops]);
 
+
+
   const handleMyLocationPress = async () => {
     try {
       const location = await Location.getCurrentPositionAsync({});
@@ -723,6 +735,22 @@ export default function TabOneScreen() {
     }
   };
 
+  const handleConfirmPinpoint = () => {
+    dispatch(
+      setDestination(
+        {
+          location: {
+            lat: pinOrigin?.latitude,
+            lng: pinOrigin?.longitude,
+          },
+          description: pinpointDetails
+        }
+      )
+    );
+    setPinpointModalVisible(false);
+    setDisplayMarker(false); 
+    handleSearch(); 
+  }
 
   const handleCancelTransportSelection = () => {
     closeTransportModal();
@@ -737,7 +765,11 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
+  const handleSearch = () => {
+    openTransportModal();
+    setRouteVisible(true);
 
+  }
   const handleSearchPress = () => {
     setIsFocused(true);
   };
@@ -755,10 +787,21 @@ export default function TabOneScreen() {
     setBusNavVisible(true);
     setTransportModalVisible(false);
   }
+  async function getLocationName(lat: number,lng: number){
+    const apiKey = GOOGLE_MAPS_PLACES_LEGACY;
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
+    const data = await response.json();
+    if(data.results && data.results.length > 0){
+      return data.results[0].formatted_address;
+    }
+    return "Unknown location";
+  }
+  
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
+
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -766,6 +809,14 @@ export default function TabOneScreen() {
             initialRegion={INITIAL_REGION}
             showsUserLocation={true}
             showsMyLocationButton={false} // Hide the default button
+            onRegionChange={(region, details) => {
+              if(displayMarker){
+                setFakeMarkerShadow(true);
+                setPinOrigin(region);
+                getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
+              }
+            }}
+            onRegionChangeComplete={() => setFakeMarkerShadow(false)}
             onMapReady={() => {
               setIsMapReady(true);
               console.log("Map is ready");
@@ -779,6 +830,7 @@ export default function TabOneScreen() {
               longitudeDelta: 0.01,
             }}
           >
+
             {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
               <MapViewDirections
                 origin={{
@@ -922,6 +974,19 @@ export default function TabOneScreen() {
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
+          {/* FAKE MARKER */}
+          {displayMarker && (
+            <View style={{...styles.fakeMarkerContainer, top: fakeMarkerShadow ? '49%' : '50%'}}>
+              {fakeMarkerShadow && (
+                <Image style={styles.fakeMarker} source={require('../../../assets/images/pin2shadow.png')} />
+              )}
+              {!fakeMarkerShadow && (
+                <Image style={styles.fakeMarker} source={require('../../../assets/images/pin2.png')} />
+              )}
+            </View>
+          )}
+
+
           {/* HAZARD BUTTON */}
           <TouchableOpacity
             style={[
@@ -943,8 +1008,26 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
-
+                renderRightButton ={() => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setDisplayMarker(true);
+                      setIsFocused(false);
+                      setPinpointModalVisible(true);
+                      setSearchVisible(false);
+                    }}
+                    style={{
+                      height: 60,
+                      justifyContent: 'center',
+                      alignItems: 'flex-end',
+                      left: '4%',
+                    }}
+                  >
+                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
+                  </TouchableOpacity>
+                  )}
                 onPress={(data, details = null) => {
+                  // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
                   dispatch(
                     setDestination({
@@ -1011,7 +1094,6 @@ export default function TabOneScreen() {
             </View>
           </Modal>
 
-
           {/* Hazard Selection Modal */}
           <Modal
             animationType="slide"
@@ -1054,6 +1136,22 @@ export default function TabOneScreen() {
               </View>
             </View>
           </Modal>
+          {/* Pinpoint selection menu */}
+          {pinpointModalVisible && (
+            <View style={{...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white'}}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
+                  <Text style={{fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25}}>Confirm destination</Text>
+                  <TouchableOpacity onPress={() => {setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false);}}>
+                    <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
+                  </TouchableOpacity>
+                </View>
+                  <Text style={{fontWeight: '400', color: dark ? 'white' : 'black', fontSize: 20}}>{pinpointDetails}</Text>
+                  <TouchableOpacity style={styles.confirmButtonPin} onPress={handleConfirmPinpoint}>
+                    <Text style={styles.cancelText}>Confirm</Text>
+                  </TouchableOpacity>
+            </View>
+          )}
+
           {/* Transport Selection Panel (Replaces Modal) */}
           {transportModalVisible && (
             <View style={{
@@ -1199,7 +1297,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    top: -80
+    top: 8
   },
   optionText: {
     fontSize: 16,
@@ -1402,7 +1500,46 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 15,
     shadowRadius: 10,
-  }
+  },
+  fakeMarker:{
+    height: 70,
+    width: 70,
+    zIndex: 501,
+  },
+  fakeMarkerContainer:{
+    top: '50%',
+    left:'50%',
+    marginLeft: -24,
+    marginTop: -48,
+    zIndex: 50,
+    position: 'absolute'
+  },
+  pinPointMenu: {
+      position: 'absolute',
+      bottom: 40,
+      height: 210,
+      left: 10,
+      right: 10,
+      zIndex: 50,
+      borderRadius: 20,
+      padding: 20,
+      elevation: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8
+  },
+  confirmButtonPin: {
+    position: 'absolute',
+    bottom: 15,
+    left: 20,
+    right: 20,
+    marginTop: 0,
+    padding: 10,
+    backgroundColor: Colors.light.themeColorDarker,
+    borderRadius: 15,
+    alignItems: "center"
+  },
 });
 
 function setRideInfo(arg0: {

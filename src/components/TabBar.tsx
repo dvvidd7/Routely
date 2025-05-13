@@ -9,8 +9,7 @@ import React from 'react';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & { transportModalVisible: boolean }) {
   const { colors, dark } = useTheme();
-  const { transportModalVisible } = useTransportModal();
-
+  const { transportModalVisible, pinpointModalVisible } = useTransportModal();
   const isAdmin = state.routes.length === 3; // Check if there are 3 tabs (admin page)
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
   const buttonWidth = dimensions.width / state.routes.length;
@@ -31,7 +30,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
   });
 
   // Render an empty view if the modal is visible
-  if (transportModalVisible) {
+  if (transportModalVisible || pinpointModalVisible) {
     return <View style={{ height: 0 }} />;
   }
 
