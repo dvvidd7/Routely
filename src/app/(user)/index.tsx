@@ -1297,7 +1297,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    top: 8
+    bottom: 80
   },
   optionText: {
     fontSize: 16,
