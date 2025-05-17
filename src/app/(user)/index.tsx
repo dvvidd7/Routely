@@ -82,8 +82,7 @@ export default function TabOneScreen() {
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [showMic, setShowMic] = useState<boolean>(true);
-  const mapRef = useRef<MapView>(null);
-  const [midWaypoint, setMidWaypoint] = useState<{ lat: number; lng: number } | null>(null);
+const [routePolyline, setRoutePolyline] = useState<{latitude: number, longitude: number}[]>([]);  const mapRef = useRef<MapView>(null);
 
   type AQIStation = {
     uid: string | number;
@@ -93,6 +92,10 @@ export default function TabOneScreen() {
     station: { name: string };
     dominentpol?: string;
   };
+
+  type HazardMarkersType = {
+    created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
+  }
   const [aqiStations, setAqiStations] = useState<AQIStation[]>([]);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
@@ -117,9 +120,7 @@ export default function TabOneScreen() {
   const [displayMarker, setDisplayMarker] = useState<boolean>(false);
   const [pinpointDetails, setPinpointDetails] = useState<string>('');
   const [showCloud, setShowCloud] = useState<boolean>(true);
-  const [hazardMarkers, setHazardMarkers] = useState<{
-    created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
-  }[]>([]);
+  const [hazardMarkers, setHazardMarkers] = useState<HazardMarkersType[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
   const [micAverage, setMicAverage] = useState<number | null>(null);
@@ -146,7 +147,37 @@ export default function TabOneScreen() {
     if (routeIndex <= 0) return console.warn("Reached end of stations!");
     setRouteIndex(routeIndex - 1);
   };
-
+  function hazardsNearPolyline(polyline: any[], hazardMarkers: any[], threshold = 100) {
+    return hazardMarkers.filter((hazard: { latitude: number; longitude: number; }) =>
+      polyline.some((coord: { latitude: number; longitude: number; }) =>
+        getDistanceFromLatLonInMeters(
+          coord.latitude,
+          coord.longitude,
+          hazard.latitude,
+          hazard.longitude
+        ) <= threshold
+      )
+    );
+  }
+useEffect(() => {
+  const checkRoute = async () => {
+    if (routePolyline.length > 0 && hazardMarkers.length > 0) {
+      const hazardsAlongRoute = hazardsNearPolyline(routePolyline, hazardMarkers, 100);
+      if (hazardsAlongRoute.length > 0) {
+        Alert.alert(
+          "Warning",
+          `There are ${hazardsAlongRoute.length} hazards reported along your route!`
+        );
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&alternatives=true&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+        );
+        const data = await response.json();
+        console.warn(data);
+      }
+    }
+  }
+  checkRoute();
+}, [routePolyline, hazardMarkers]);
   const closeTransportModal = () => {
     setTransportModalVisible(false);
     setSearchVisible(true);
@@ -1155,10 +1186,10 @@ export default function TabOneScreen() {
                   latitude: userLocation.latitude,
                   longitude: userLocation.longitude
                 }}
-                destination={{
-                  latitude: destination.location.lat,
-                  longitude: destination.location.lng
+                onReady={result => {
+                  setRoutePolyline(result.coordinates);
                 }}
+                destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
                 strokeColor={Colors.light.themeColorDarker}
