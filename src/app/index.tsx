@@ -8,8 +8,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const index = () => {
   const {session, loading, isAdmin} = useAuth();
-console.warn("isAdmin: " + isAdmin);
-console.warn("Loading: " + loading);
   if(loading)
   {
     return<ActivityIndicator/>;

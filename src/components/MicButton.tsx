@@ -94,12 +94,12 @@ const MicButton = ({onAverage} : MicButtonProps) => {
     // </View>
     <>
         <TouchableOpacity style={{...styles.micButton, backgroundColor:showMic ? Colors.light.themeColorDarker : "white"}} onPress={handleMicPress}>
-          <Feather name="mic" size={20} color= { showMic ? "white" : Colors.light.themeColorDarker} />
+          <Feather name="mic" size={20} color= { showMic ? "red" : Colors.light.themeColorDarker} />
         </TouchableOpacity>
         { showAvg && (
         <View style={styles.avgContainer}>
           <Text style={styles.avg}>Average dB level: {average !== null ? average.toFixed(2) + 'dB' : 'measuring...'}</Text>
-          {'/n'}
+          
           {average && average < -20 && (
             <Text style={{fontWeight: '500', color: 'green'}}>Normal level</Text>
           )}
