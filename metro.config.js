@@ -6,4 +6,9 @@ defaultConfig.resolver.alias = {
   '@': __dirname + '/src',
 };
 
-module.exports = defaultConfig;
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
+
+config.resolver.unstable_enablePackageExports = false;
+
+module.exports = config;
