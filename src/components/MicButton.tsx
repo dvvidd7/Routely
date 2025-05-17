@@ -10,6 +10,7 @@ const MicButton = ({onAverage} : MicButtonProps) => {
   const [metering, setMetering] = useState<number | null>(null);
   const [average, setAverage] = useState<number | null>(null);
   const [showMic, setShowMic] = useState<boolean>(false);
+  const [showAvg, setShowAvg] = useState<boolean>(false);
   const [polluted, setPolluted] = useState<boolean>(false);
   const meteringValues = useRef<number[]>([]);
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -19,6 +20,7 @@ const MicButton = ({onAverage} : MicButtonProps) => {
     showMic ? stopRecording() : startRecording();
   }
   const startRecording = async () => {
+    setShowAvg(true);
     setAverage(null);
     meteringValues.current = [];
     try {
@@ -71,10 +73,7 @@ const MicButton = ({onAverage} : MicButtonProps) => {
       } else console.warn("Metering values <= 0")
     }
     setShowMic(false);
-    if(!average) return;
-    if(average > -40) setPolluted(true);
-    else setPolluted(false);
-    
+    setTimeout(()=>{setShowAvg(false);}, 4000);
   };
 
   return (
@@ -97,9 +96,16 @@ const MicButton = ({onAverage} : MicButtonProps) => {
         <TouchableOpacity style={{...styles.micButton, backgroundColor:showMic ? Colors.light.themeColorDarker : "white"}} onPress={handleMicPress}>
           <Feather name="mic" size={20} color= { showMic ? "white" : Colors.light.themeColorDarker} />
         </TouchableOpacity>
-        { (
+        { showAvg && (
         <View style={styles.avgContainer}>
           <Text style={styles.avg}>Average dB level: {average !== null ? average.toFixed(2) + 'dB' : 'measuring...'}</Text>
+          {'/n'}
+          {average && average < -20 && (
+            <Text style={{fontWeight: '500', color: 'green'}}>Normal level</Text>
+          )}
+          {average && average > -20 && (
+            <Text style={{fontWeight: '500', color: 'red'}}>High level</Text>
+          )}
         </View>
         )}
     </>
