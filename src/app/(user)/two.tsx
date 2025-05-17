@@ -192,7 +192,7 @@ export default function TabTwoScreen() {
             setNewUsername('');
             queryClient.clear();
             await supabase.auth.signOut();
-            router.push('/sign-in');
+            router.push('sign-in');
           }
         },
       ]
