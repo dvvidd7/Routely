@@ -92,7 +92,6 @@ export default function SignIn() {
   return (
 
     <View style={ dark ? styles.containerDark : styles.container}>
-      <Stack.Screen name='sign-in' options={{title:"Sign-In", headerShown: false}} />
       <View style={{...styles.topImageContainer, opacity: dark ? 0.5 : 1}}>
         <Image source={require('../../../assets/images/topVector.png')} style={styles.topImage} />
       </View>
