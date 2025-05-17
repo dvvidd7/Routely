@@ -25,6 +25,7 @@ import { Divider } from 'react-native-paper';
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/providers/AuthProvider';
 import { UrlTile } from 'react-native-maps';
+import MicButton from '@/components/MicButton';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -66,6 +67,7 @@ const hazards: Hazard[] = [
   { id: 2, label: "Traffic Jam", icon: "🚦" },
   { id: 3, label: "Roadblock", icon: "🚧" },
   { id: 4, label: "Ticket inspectors", icon: "👮" },
+  { id: 5, label: "Noise Pollution", icon: "🎤" },
 ];
 
 export default function TabOneScreen() {
@@ -79,6 +81,7 @@ export default function TabOneScreen() {
   const { transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
+  const [showMic, setShowMic] = useState<boolean>(false);
   const mapRef = useRef<MapView>(null);
 
   type AQIStation = {
@@ -117,6 +120,7 @@ export default function TabOneScreen() {
   }[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
+  const [micAverage, setMicAverage] = useState<number | null>(null);
   const origin = userLocation
     ? `${userLocation.latitude},${userLocation.longitude}`
     : null; // Fallback to null if userLocation is not available
@@ -247,7 +251,12 @@ export default function TabOneScreen() {
       }
     });
   };
-
+  useEffect(()=>{
+    if(!micAverage) return;
+    if(micAverage > -20){
+        handleSelectHazard({id: 5, icon: '🎤', label: 'Noise Pollution'})
+    }
+  }, [micAverage])
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   useEffect(() => {
     const startTracking = async () => {
@@ -866,6 +875,7 @@ export default function TabOneScreen() {
     setIsFocused(true);
   };
 
+
   function handleBusSelection() {
     if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
     setTimeout(() => {
@@ -1103,22 +1113,12 @@ export default function TabOneScreen() {
           </TouchableOpacity>
 
           {/* MICROPHONE BUTTON */}
-          <TouchableOpacity style={styles.micButton} onPress={handleMyLocationPress}>
-            <Feather name="mic" size={20} color="white" />
-          </TouchableOpacity>
+          <MicButton onAverage={setMicAverage} />
+          
 
           <TouchableOpacity
-            style={{
-              position: 'absolute',
-              top: 180,
-              right: 20,
-              zIndex: 100,
-              backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee',
-              padding: 10,
-              borderRadius: 60,
-            }}
+            style={{...styles.cloudButton, backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee',}}
             onPress={() => setShowAirQualityLayer((prev) => !prev)}
-
           >
             <Feather
               name="cloud"
@@ -1289,7 +1289,7 @@ export default function TabOneScreen() {
                   Select a Hazard
                 </Text>
                 <View style={styles.hazardGrid}>
-                  {hazards.map((hazard) => (
+                  {hazards.map((hazard) => hazard.id != 5 && (
                     <TouchableOpacity
                       key={hazard.id}
                       style={[styles.hazardOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
@@ -1533,17 +1533,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
-  micButton:{
-    position: "absolute",
-    top: 180,
-    left: 35,
-    backgroundColor: Colors.light.themeColorDarker,
-    borderRadius: 50,
-    padding: 15,
-    elevation: 10,
-    shadowOpacity: 5,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 10,
+
+  cloudButton:{
+      position: 'absolute',
+      top: 180,
+      right: 20,
+      zIndex: 100,
+      padding: 10,
+      borderRadius: 60,
   },
   HazardButton: {
     position: "absolute",
