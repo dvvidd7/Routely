@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { setDestination, selectDestination } from "@/slices/navSlice";
 import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
+import { fetchAirQualityData } from '../../api/airQuality';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
 import { useCreateSearch, useFetchSearches } from '@/api/recentSearches';
@@ -23,6 +24,7 @@ import { useNotification } from '@/providers/NotificationContext';
 import { Divider } from 'react-native-paper';
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/providers/AuthProvider';
+import { UrlTile } from 'react-native-maps';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -109,7 +111,7 @@ export default function TabOneScreen() {
     Uber: { price: string; time: number };
     RealTime: { googleDuration: number; distance: number };
   } | null>(null);
-  
+
   const openTransportModal = () => {
     setTransportModalVisible(true);
     setSearchVisible(false);
@@ -122,6 +124,7 @@ export default function TabOneScreen() {
     if (routeIndex <= 0) return console.warn("Reached end of stations!");
     setRouteIndex(routeIndex - 1);
   };
+
   const closeTransportModal = () => {
     setTransportModalVisible(false);
     setSearchVisible(false);
@@ -175,7 +178,7 @@ export default function TabOneScreen() {
 
   const awardPoints = async () => {
     if (!userEmail) return;
-    updatePoints({ points: 10 });
+    useUpdatePoints({ points: 10 });
 
     Alert.alert("Bus trip ended", `You earned 10 points`);
     console.log('10 points awarded!');
@@ -187,6 +190,21 @@ export default function TabOneScreen() {
     setSearchVisible(true);
 
     dispatch(setDestination(null))
+  };
+
+  type AirQualityIndex = {
+    aqi: number;
+    category: string;
+    [key: string]: any;
+  };
+
+  type AirQualityInfo = {
+    indexes: AirQualityIndex[];
+    healthRecommendations?: {
+      generalPopulation?: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
   };
 
   const openUber = () => {
@@ -437,7 +455,7 @@ export default function TabOneScreen() {
 
   {/* POINTS SYSTEM */ }
 
-  const { mutate: updatePoints } = useUpdatePoints();
+  const { mutate: updatePoints } = useUpdatePoints({ points: 0 });
   const { data: points, error } = useGetPoints();
 
   const queryClient = useQueryClient();
@@ -747,8 +765,8 @@ export default function TabOneScreen() {
       )
     );
     setPinpointModalVisible(false);
-    setDisplayMarker(false); 
-    handleSearch(); 
+    setDisplayMarker(false);
+    handleSearch();
   }
 
   const handleCancelTransportSelection = () => {
@@ -786,22 +804,23 @@ export default function TabOneScreen() {
     setBusNavVisible(true);
     setTransportModalVisible(false);
   }
-  async function getLocationName(lat: number,lng: number){
+  async function getLocationName(lat: number, lng: number) {
     const apiKey = GOOGLE_MAPS_PLACES_LEGACY;
     const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
     const data = await response.json();
-    if(data.results && data.results.length > 0){
+    if (data.results && data.results.length > 0) {
       return data.results[0].formatted_address;
     }
     return "Unknown location";
   }
-  
+
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
 
           <MapView
+            provider="google"
             ref={mapRef}
             style={styles.map}
             customMapStyle={dark ? mapDark : []}
@@ -809,7 +828,7 @@ export default function TabOneScreen() {
             showsUserLocation={true}
             showsMyLocationButton={false} // Hide the default button
             onRegionChange={(region, details) => {
-              if(displayMarker){
+              if (displayMarker) {
                 setFakeMarkerShadow(true);
                 setPinOrigin(region);
                 getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
@@ -825,10 +844,18 @@ export default function TabOneScreen() {
               longitude: userLocation?.longitude || INITIAL_REGION.longitude,
               // latitudeDelta: 0.0922,
               // longitudeDelta: 0.0421,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
+              latitudeDelta: 0.1,
+              longitudeDelta: 0.11,
             }}
           >
+            <UrlTile
+              urlTemplate={`https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_PLACES_LEGACY}`}
+              maximumZ={16}
+              flipY={false}
+              tileSize={256}
+              zIndex={0}
+            />
+
 
             {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
               <MapViewDirections
@@ -975,7 +1002,7 @@ export default function TabOneScreen() {
 
           {/* FAKE MARKER */}
           {displayMarker && (
-            <View style={{...styles.fakeMarkerContainer, top: fakeMarkerShadow ? '49%' : '50%'}}>
+            <View style={{ ...styles.fakeMarkerContainer, top: fakeMarkerShadow ? '49%' : '50%' }}>
               {fakeMarkerShadow && (
                 <Image style={styles.fakeMarker} source={require('../../../assets/images/pin2shadow.png')} />
               )}
@@ -1010,7 +1037,7 @@ export default function TabOneScreen() {
                 predefinedPlaces={[]}
                 minLength={1}
                 fields='*'
-                renderRightButton ={() => (
+                renderRightButton={() => (
                   <TouchableOpacity
                     onPress={() => {
                       setDisplayMarker(true);
@@ -1025,9 +1052,9 @@ export default function TabOneScreen() {
                       left: '4%',
                     }}
                   >
-                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
+                    <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
                   </TouchableOpacity>
-                  )}
+                )}
                 onPress={(data, details = null) => {
                   // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
@@ -1090,8 +1117,8 @@ export default function TabOneScreen() {
                 filterReverseGeocodingByTypes={[]}
                 GooglePlacesDetailsQuery={{}}
                 GooglePlacesSearchQuery={{
-                    rankby: "distance",
-                    type: "restaurant",
+                  rankby: "distance",
+                  type: "restaurant",
                 }}
                 GoogleReverseGeocodingQuery={{}}
                 isRowScrollable={true}
@@ -1101,7 +1128,7 @@ export default function TabOneScreen() {
                 listViewDisplayed="auto"
                 keepResultsAfterBlur={false}
                 numberOfLines={1}
-                onNotFound={() => {}}
+                onNotFound={() => { }}
                 onTimeout={() => console.warn("google places autocomplete: request timeout")}
                 predefinedPlacesAlwaysVisible={false}
                 suppressDefaultStyles={false}
@@ -1141,18 +1168,18 @@ export default function TabOneScreen() {
                       style={[styles.hazardOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
                       onPress={() => handleSelectHazard(hazard)}
                     >
-                    {hazard.label === "Traffic Jam" && (
-                      <Image source={require('../../../assets/images/jam.png')} style={styles.hazardLogo} />
-                    )}
-                    {hazard.label === "Roadblock" && (
-                      <Image source={require('../../../assets/images/roadblocklogo.png')} style={styles.hazardLogo} />
-                    )}
-                    {hazard.label === "Ticket inspectors" && (
-                      <Image source={require('../../../assets/images/inspectorlogo.png')} style={styles.hazardLogo} />
-                    )}
-                    {hazard.label === "Accident" && (
-                      <Image source={require('../../../assets/images/accidentlogo.png')} style={styles.hazardLogo} />
-                    )}
+                      {hazard.label === "Traffic Jam" && (
+                        <Image source={require('../../../assets/images/jam.png')} style={styles.hazardLogo} />
+                      )}
+                      {hazard.label === "Roadblock" && (
+                        <Image source={require('../../../assets/images/roadblocklogo.png')} style={styles.hazardLogo} />
+                      )}
+                      {hazard.label === "Ticket inspectors" && (
+                        <Image source={require('../../../assets/images/inspectorlogo.png')} style={styles.hazardLogo} />
+                      )}
+                      {hazard.label === "Accident" && (
+                        <Image source={require('../../../assets/images/accidentlogo.png')} style={styles.hazardLogo} />
+                      )}
                       {/* <Text style={styles.hazardIcon}>{hazard.icon}</Text> */}
                       <Text style={[styles.hazardLabel, { color: dark ? "white" : "black" }]}>{hazard.label}</Text>
                     </TouchableOpacity>
@@ -1166,17 +1193,17 @@ export default function TabOneScreen() {
           </Modal>
           {/* Pinpoint selection menu */}
           {pinpointModalVisible && (
-            <View style={{...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white'}}>
-                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
-                  <Text style={{fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25}}>Confirm destination</Text>
-                  <TouchableOpacity onPress={() => {setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false);}}>
-                    <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
-                  </TouchableOpacity>
-                </View>
-                  <Text style={{fontWeight: '400', color: dark ? 'white' : 'black', fontSize: 20}}>{pinpointDetails}</Text>
-                  <TouchableOpacity style={styles.confirmButtonPin} onPress={handleConfirmPinpoint}>
-                    <Text style={styles.cancelText}>Confirm</Text>
-                  </TouchableOpacity>
+            <View style={{ ...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25 }}>Confirm destination</Text>
+                <TouchableOpacity onPress={() => { setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false); }}>
+                  <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontWeight: '400', color: dark ? 'white' : 'black', fontSize: 20 }}>{pinpointDetails}</Text>
+              <TouchableOpacity style={styles.confirmButtonPin} onPress={handleConfirmPinpoint}>
+                <Text style={styles.cancelText}>Confirm</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -1325,7 +1352,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    bottom: 10
+    bottom: 80
   },
   optionText: {
     fontSize: 16,
@@ -1390,7 +1417,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
-  
+
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
@@ -1408,7 +1435,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  hazardLogo:{
+  hazardLogo: {
     width: 60,
     height: 60,
     marginBottom: 10,
@@ -1529,33 +1556,33 @@ const styles = StyleSheet.create({
     elevation: 15,
     shadowRadius: 10,
   },
-  fakeMarker:{
+  fakeMarker: {
     height: 70,
     width: 70,
     zIndex: 501,
   },
-  fakeMarkerContainer:{
+  fakeMarkerContainer: {
     top: '50%',
-    left:'50%',
+    left: '50%',
     marginLeft: -24,
     marginTop: -48,
     zIndex: 50,
     position: 'absolute'
   },
   pinPointMenu: {
-      position: 'absolute',
-      bottom: 40,
-      height: 210,
-      left: 10,
-      right: 10,
-      zIndex: 50,
-      borderRadius: 20,
-      padding: 20,
-      elevation: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8
+    position: 'absolute',
+    bottom: 40,
+    height: 210,
+    left: 10,
+    right: 10,
+    zIndex: 50,
+    borderRadius: 20,
+    padding: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8
   },
   confirmButtonPin: {
     position: 'absolute',
@@ -1569,12 +1596,3 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
 });
-
-function setRideInfo(arg0: {
-  Bus: { price: number; time: number; }; Uber: { price: string; time: number; }; RealTime: {
-    googleDuration: number; // Actual Google-estimated travel time
-    distance: number;
-  };
-}) {
-  throw new Error('Function not implemented.');
-}

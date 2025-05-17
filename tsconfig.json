@@ -16,6 +16,6 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "src/api/airQuality.js"  ],
   "extends": "expo/tsconfig.base"
 }
