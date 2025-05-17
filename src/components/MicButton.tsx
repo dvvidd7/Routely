@@ -73,7 +73,7 @@ const MicButton = ({onAverage} : MicButtonProps) => {
       } else console.warn("Metering values <= 0")
     }
     setShowMic(false);
-    setTimeout(()=>{setShowAvg(false);}, 4000);
+    setTimeout(()=>{setShowAvg(false);}, 3000);
   };
 
   return (

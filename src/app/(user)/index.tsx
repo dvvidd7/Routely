@@ -81,7 +81,7 @@ export default function TabOneScreen() {
   const { transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
-  const [showMic, setShowMic] = useState<boolean>(false);
+  const [showMic, setShowMic] = useState<boolean>(true);
   const mapRef = useRef<MapView>(null);
 
   type AQIStation = {
@@ -115,6 +115,7 @@ export default function TabOneScreen() {
   const [pinOrigin, setPinOrigin] = useState<Region>();
   const [displayMarker, setDisplayMarker] = useState<boolean>(false);
   const [pinpointDetails, setPinpointDetails] = useState<string>('');
+  const [showCloud, setShowCloud] = useState<boolean>(true);
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -134,6 +135,7 @@ export default function TabOneScreen() {
   const openTransportModal = () => {
     setTransportModalVisible(true);
     setSearchVisible(false);
+    setShowMic(false);setShowCloud(false);
   };
   const handleRouteIndexIncrease = () => {
     if (routeStops.length - 1 <= routeIndex) return console.warn("Reached end of stations!");
@@ -146,7 +148,9 @@ export default function TabOneScreen() {
 
   const closeTransportModal = () => {
     setTransportModalVisible(false);
-    setSearchVisible(false);
+    setSearchVisible(true);
+    setShowCloud(true);
+    setShowMic(true);
   };
   const getUserLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
@@ -186,6 +190,7 @@ export default function TabOneScreen() {
   };
   const handleRecentSearchPress = () => {
     setIsFocused(false);
+    openTransportModal();
     setRouteVisible(true);
     setTransportModalVisible(true);
     if (!destination || !userLocation) return;
@@ -254,7 +259,7 @@ export default function TabOneScreen() {
   useEffect(()=>{
     if(!micAverage) return;
     if(micAverage > -20){
-        handleSelectHazard({id: 5, icon: '🎤', label: 'Noise Pollution',})
+        handleSelectHazard({id: 5, icon: '🎤', label: 'Noise Pollution'})
     }
   }, [micAverage])
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -364,7 +369,7 @@ export default function TabOneScreen() {
         mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
           edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
         });
-      }, 500); // Delay rendering by 500ms
+      }, 500);
     }
   }, [stationVisible, routeStops]);
 
@@ -873,13 +878,17 @@ export default function TabOneScreen() {
   const handleSearch = () => {
     openTransportModal();
     setRouteVisible(true);
-
   }
   const handleSearchPress = () => {
     setIsFocused(true);
   };
 
-
+  const hideCloudMic = () => {
+    setShowCloud(false);setShowMic(false);
+  }
+  const showCloudMic = () => {
+    setShowCloud(true);setShowMic(true);
+  }
   function handleBusSelection() {
     if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
     setTimeout(() => {
@@ -891,6 +900,8 @@ export default function TabOneScreen() {
     setRouteIndex(0);
     setStationVisible(true);
     setBusNavVisible(true);
+    hideCloudMic();
+    
     setTransportModalVisible(false);
   }
   function getAqiColor(aqi: number) {
@@ -1127,9 +1138,11 @@ export default function TabOneScreen() {
           </TouchableOpacity>
 
           {/* MICROPHONE BUTTON */}
-          <MicButton onAverage={setMicAverage} />
+          {showMic && (
+            <MicButton onAverage={setMicAverage} />
+          )}
           
-
+      {showCloud && (
           <TouchableOpacity
             style={{...styles.cloudButton, backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee',}}
             onPress={() => setShowAirQualityLayer((prev) => !prev)}
@@ -1140,6 +1153,8 @@ export default function TabOneScreen() {
               color={showAirQualityLayer ? 'white' : '#025ef8'}
             />
           </TouchableOpacity>
+      )}
+
 
           {/* FAKE MARKER */}
           {displayMarker && (
@@ -1205,8 +1220,9 @@ export default function TabOneScreen() {
                       description: data.description,
                     }))
                   setRouteVisible(true);
+                  
                   openTransportModal();
-                  setSearchVisible(false);
+                  
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
                 }}
                 query={{
@@ -1326,7 +1342,7 @@ export default function TabOneScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity style={styles.cancelButtonHazard} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -1493,7 +1509,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    bottom: 80
+    bottom: 10
+  },
+  cancelButtonHazard: {
+    backgroundColor: "#ff4d4d",
+    padding: 15,
+    width: "100%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+    bottom: 70
   },
   optionText: {
     fontSize: 16,
