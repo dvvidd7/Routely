@@ -3,12 +3,12 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/providers/AuthProvider'
 export const useFetchSearches = () => {
     const { session } = useAuth();
-  
+    
     return useQuery({
       queryKey: ['searches'],
       queryFn: async () => {
         if (!session) return [];
-  
+        
         const { data, error } = await supabase
           .from('searches')
           .select('*')

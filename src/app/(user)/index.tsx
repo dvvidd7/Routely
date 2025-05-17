@@ -37,6 +37,7 @@ type Region = {
   longitudeDelta: any,
 }
 
+
 type Station = {
   transit_details: { departure_stop: { name: any; location: { lat: any; lng: any; }; }; arrival_stop: { name: any; location: { lat: any; lng: any; }; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; };
 }
@@ -228,7 +229,6 @@ export default function TabOneScreen() {
 
           // Update the current location
 
-
           // Compare with the previous location
           if (previousLocation) {
             const distance = getDistanceFromLatLonInMeters(
@@ -366,7 +366,6 @@ export default function TabOneScreen() {
     };
     getTravelTime();
   }, [userLocation, destination, GOOGLE_MAPS_PLACES_LEGACY]);
-
   useEffect(() => {
     let pointsAwarded = false; // Prevent multiple awards
 
@@ -1008,6 +1007,9 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
+                predefinedPlaces={[]}
+                minLength={1}
+                fields='*'
                 renderRightButton ={() => (
                   <TouchableOpacity
                     onPress={() => {
@@ -1080,6 +1082,32 @@ export default function TabOneScreen() {
                 }}
                 debounce={300}
                 enablePoweredByContainer={false}
+                autoFillOnNotFound={false}
+                currentLocation={false}
+                currentLocationLabel="Current location"
+                disableScroll={false}
+                enableHighAccuracyLocation={true}
+                filterReverseGeocodingByTypes={[]}
+                GooglePlacesDetailsQuery={{}}
+                GooglePlacesSearchQuery={{
+                    rankby: "distance",
+                    type: "restaurant",
+                }}
+                GoogleReverseGeocodingQuery={{}}
+                isRowScrollable={true}
+                keyboardShouldPersistTaps="always"
+                listHoverColor="#ececec"
+                listUnderlayColor="#c8c7cc"
+                listViewDisplayed="auto"
+                keepResultsAfterBlur={false}
+                numberOfLines={1}
+                onNotFound={() => {}}
+                onTimeout={() => console.warn("google places autocomplete: request timeout")}
+                predefinedPlacesAlwaysVisible={false}
+                suppressDefaultStyles={false}
+                textInputHide={false}
+                timeout={20000}
+                isNewPlacesAPI={false}
               />
               {recentVisible && (
                 <FlatList
@@ -1297,7 +1325,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    bottom: 80
+    bottom: 10
   },
   optionText: {
     fontSize: 16,
