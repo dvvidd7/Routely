@@ -69,8 +69,10 @@ const hazards: Hazard[] = [
 ];
 
 export default function TabOneScreen() {
+  const [showAirQualityLayer, setShowAirQualityLayer] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const { dark } = useTheme();
+  const [co2stations, setco2Stations] = useState([]);
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -78,8 +80,21 @@ export default function TabOneScreen() {
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const mapRef = useRef<MapView>(null);
+
+  type AQIStation = {
+    uid: string | number;
+    lat: number;
+    lon: number;
+    aqi: number | string;
+    station: { name: string };
+    // add other properties if needed
+  };
+  const [aqiStations, setAqiStations] = useState<AQIStation[]>([]);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
+  const [aqiData, setAqiData] = useState<{
+    city: any; aqi: number; dominentpol?: string
+  } | null>(null);
   const destination = useSelector(selectDestination);
   const { data: searches, error: searchError } = useFetchSearches();
   const [estimatedBus, setEstimatedBus] = useState<number | string | null>(null);
@@ -139,6 +154,13 @@ export default function TabOneScreen() {
     let location = await Location.getCurrentPositionAsync({});
     return location.coords;
   };
+  const AQI_TOKEN = 'e4124fb6b3a2693bcade167a3f41bd046c076809';
+  const lat = userLocation ? userLocation.latitude : INITIAL_REGION.latitude;
+  const lon = userLocation ? userLocation.longitude : INITIAL_REGION.longitude;
+  const delta = 0.1; // adjust for larger/smaller bounding box
+
+  const boundsUrl = `https://api.waqi.info/map/bounds/?latlng=${lat - delta},${lon - delta},${lat + delta},${lon + delta}&token=${AQI_TOKEN}`;
+
 
   const getDistanceFromLatLonInMeters = (
     lat1: number,
@@ -336,6 +358,7 @@ export default function TabOneScreen() {
       }, 500); // Delay rendering by 500ms
     }
   }, [stationVisible, routeStops]);
+
 
   useEffect(() => {
     if (!userLocation || !destination || !destination.description) return;
@@ -658,7 +681,29 @@ export default function TabOneScreen() {
     else setEstimatedBus('-');
   }, [routeStops]);
 
+  useEffect(() => {
+    if (userLocation?.latitude && userLocation?.longitude) {
+      const fetchAQI = async () => {
+        try {
+          const response = await fetch(
+            `https://api.waqi.info/feed/geo:${userLocation.latitude};${userLocation.longitude}/?token=${AQI_TOKEN}`
+          );
+          const json = await response.json();
+          if (json.status === 'ok') {
+            setAqiData(json.data);
+          } else {
+            console.warn('AQI API error:', json.data);
+            setAqiData(null);
+          }
+        } catch (error) {
+          console.error('Error fetching AQI:', error);
+          setAqiData(null);
+        }
+      };
 
+      fetchAQI();
+    }
+  }, [userLocation]);
 
   const handleMyLocationPress = async () => {
     try {
@@ -752,6 +797,36 @@ export default function TabOneScreen() {
     }
   };
 
+  const fetchMultipleStations = async (latitude: number, longitude: number) => {
+    const delta = 0.4; // adjust how large the area is
+    const token = 'e4124fb6b3a2693bcade167a3f41bd046c076809';
+
+    const lat1 = latitude - delta;
+    const lon1 = longitude - delta;
+    const lat2 = latitude + delta;
+    const lon2 = longitude + delta;
+
+    const url = `https://api.waqi.info/map/bounds/?latlng=${lat1},${lon1},${lat2},${lon2}&token=${AQI_TOKEN}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.status === 'ok') {
+        setAqiStations(data.data);
+      } else {
+        console.warn('API error:', data.data);
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (userLocation) {
+      fetchMultipleStations(userLocation.latitude, userLocation.longitude);
+    }
+  }, [userLocation]);
+
   const handleConfirmPinpoint = () => {
     dispatch(
       setDestination(
@@ -804,6 +879,14 @@ export default function TabOneScreen() {
     setBusNavVisible(true);
     setTransportModalVisible(false);
   }
+  function getAqiColor(aqi: number) {
+    if (aqi <= 50) return 'green';
+    if (aqi <= 100) return 'yellow';
+    if (aqi <= 150) return 'orange';
+    if (aqi <= 200) return 'red';
+    if (aqi <= 300) return 'purple';
+    return 'maroon';
+  }
   async function getLocationName(lat: number, lng: number) {
     const apiKey = GOOGLE_MAPS_PLACES_LEGACY;
     const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
@@ -849,12 +932,31 @@ export default function TabOneScreen() {
             }}
           >
             <UrlTile
-              urlTemplate={`https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_PLACES_LEGACY}`}
+              urlTemplate="https://tiles.aqicn.org/tiles/usepa-aqi/{z}/{x}/{y}.png?token=e4124fb6b3a2693bcade167a3f41bd046c076809"
               maximumZ={16}
               flipY={false}
-              tileSize={256}
-              zIndex={0}
             />
+            {showAirQualityLayer && aqiStations.map((station) => (
+              <Marker
+                key={`aqi-${station.uid}`}
+                coordinate={{
+                  latitude: station.lat,
+                  longitude: station.lon,
+                }}
+                title={`AQI: ${station.aqi}`}
+                description={station.station.name}
+                pinColor={getAqiColor(Number(station.aqi))}
+              />
+            ))}
+            {showAirQualityLayer && (
+              <UrlTile
+                urlTemplate={`https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_PLACES_LEGACY}`}
+                maximumZ={16}
+                flipY={false}
+                tileSize={256}
+                zIndex={0}
+              />
+            )}
 
 
             {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
@@ -1003,6 +1105,26 @@ export default function TabOneScreen() {
           {/* MICROPHONE BUTTON */}
           <TouchableOpacity style={styles.micButton} onPress={handleMyLocationPress}>
             <Feather name="mic" size={20} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              top: 180,
+              right: 20,
+              zIndex: 100,
+              backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee',
+              padding: 10,
+              borderRadius: 60,
+            }}
+            onPress={() => setShowAirQualityLayer((prev) => !prev)}
+
+          >
+            <Feather
+              name="cloud"
+              size={20}
+              color={showAirQualityLayer ? 'white' : '#025ef8'}
+            />
           </TouchableOpacity>
 
           {/* FAKE MARKER */}
