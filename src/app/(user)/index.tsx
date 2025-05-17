@@ -254,7 +254,7 @@ export default function TabOneScreen() {
   useEffect(()=>{
     if(!micAverage) return;
     if(micAverage > -20){
-        handleSelectHazard({id: 5, icon: '🎤', label: 'Noise Pollution'})
+        handleSelectHazard({id: 5, icon: '🎤', label: 'Noise Pollution',})
     }
   }, [micAverage])
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -1095,6 +1095,13 @@ export default function TabOneScreen() {
                 {hazard.icon === '👮' && (
                   <Image
                     source={require(`../../../assets/images/inspector.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                  {hazard.icon === '🎤' && (
+                  <Image
+                    source={require(`../../../assets/images/loudnoise.png`)}
                     style={{ width: 80, height: 80 }}
                     resizeMode='center'
                   />
