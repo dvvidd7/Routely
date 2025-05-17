@@ -908,7 +908,6 @@ useEffect(() => {
     closeTransportModal();
     setSearchVisible(true);
     setStationVisible(false);
-    setMidWaypoint(null);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -924,7 +923,6 @@ useEffect(() => {
     if (!isSafe) {
       let rerouteAttempts = 0;
       let rerouted = false;
-      let newMid = midWaypoint;
 
       while (!isSafe && rerouteAttempts < 5) {
         if (userLocation && destination?.location) {
@@ -935,8 +933,6 @@ useEffect(() => {
           const lng2 = destination.location.lng;
           const midLat = (lat1 + lat2) / 2 + (Math.random() - 0.5) * 0.01;
           const midLng = (lng1 + lng2) / 2 + (Math.random() - 0.5) * 0.01;
-          newMid = { lat: midLat, lng: midLng };
-          setMidWaypoint(newMid);
 
           // Fetch new route using the waypoint
           const response = await fetch(
@@ -1193,7 +1189,6 @@ useEffect(() => {
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
                 strokeColor={Colors.light.themeColorDarker}
-                waypoints={midWaypoint ? [{ latitude: midWaypoint.lat, longitude: midWaypoint.lng }] : []}
               />
             )}
             {destination?.location && userLocation && routeVisible && (
@@ -1326,7 +1321,7 @@ useEffect(() => {
           )}
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); setMidWaypoint(null); }} />
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true);}} />
           )}
 
           {/* MY LOCATION BUTTON */}
