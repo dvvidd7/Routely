@@ -1109,6 +1109,11 @@ export default function TabOneScreen() {
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
+          {/* MICROPHONE BUTTON */}
+          <TouchableOpacity style={styles.micButton} onPress={handleMyLocationPress}>
+            <Feather name="mic" size={20} color="white" />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={{
               position: 'absolute',
@@ -1217,7 +1222,7 @@ export default function TabOneScreen() {
                     backgroundColor: dark ? 'black' : 'white',
                     zIndex: 999,
                     position: 'absolute',
-                    top: 60,
+                    top: 70,
                     borderRadius: 4,
                   },
                   row: {
@@ -1530,6 +1535,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.themeColorDarker,
     borderRadius: 60,
     padding: 20,
+    elevation: 10,
+    shadowOpacity: 5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+  },
+  micButton:{
+    position: "absolute",
+    top: 180,
+    left: 35,
+    backgroundColor: Colors.light.themeColorDarker,
+    borderRadius: 50,
+    padding: 15,
     elevation: 10,
     shadowOpacity: 5,
     shadowOffset: { width: 0, height: 0 },
