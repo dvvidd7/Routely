@@ -6,6 +6,8 @@ export default {
     text: '#000',
     background: '#fff',
     tint: tintColorLight,
+    themeColor: '#0384fc',
+    themeColorDarker: '#025ef8', // CULOAREA FINALA
     tabIconDefault: '#ccc',
     tabIconSelected: tintColorLight,
   },

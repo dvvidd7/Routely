@@ -33,23 +33,23 @@ const BusNavigation = ({station, onCancel, routeIndex, onIncrease, onDecrease, m
             <Text style={styles.title}>Transit Navigator</Text>
             {multiple && (
             <TouchableOpacity style={styles.closeIconContainer} onPress={onDecrease}>
-                <FontAwesome style={styles.closeIcon} color='#0384fc' name='backward' size={15} />
+                <FontAwesome style={styles.closeIcon} color='#025ef8' name='backward' size={15} />
             </TouchableOpacity>
             )}
             {multiple && (
             <TouchableOpacity style={styles.closeIconContainer} onPress={onIncrease}>
-                <AntDesign style={styles.closeIcon} color='#0384fc' name='forward' size={15} />
+                <AntDesign style={styles.closeIcon} color='#025ef8' name='forward' size={15} />
             </TouchableOpacity>
             )}
 
             <TouchableOpacity style={styles.closeIconContainer} onPress={onCancel}>
-                <MaterialCommunityIcons style={styles.closeIcon} color='#0384fc' name='close' size={15} />
+                <MaterialCommunityIcons style={styles.closeIcon} color='#025ef8' name='close' size={15} />
             </TouchableOpacity>
             
         </View>
         <View style={{...styles.smallContainer, backgroundColor: dark ? 'black' : 'white'}}>
         <View>
-            <MaterialCommunityIcons name='bus-marker' size={30} color={'#0384fc'} />
+            <MaterialCommunityIcons name='bus-marker' size={30} color={'#025ef8'} />
         </View>
         <View>
             <Text style={{...styles.line, color: dark ? 'white' : 'black'}}>Take {station[routeIndex].vehicle.toLowerCase()} line: <Text style={styles.customInput}>{station[routeIndex].line}</Text></Text>
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 90,
         marginHorizontal: 20,
-        backgroundColor: '#0384fc',
+        backgroundColor: '#025ef8',
         width: '90%',
         borderRadius: 10,
         zIndex: 10,
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 15,
     },
     customInput:{
-        color: '#0384fc',
+        color: '#025ef8',
         fontWeight: '700',
     },
     title:{
@@ -115,6 +115,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     closeIcon: {
-        color: '#0384fc',
+        color: '#025ef8',
     }
 })

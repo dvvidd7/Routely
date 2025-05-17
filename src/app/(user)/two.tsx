@@ -1,5 +1,5 @@
 import React, { JSXElementConstructor, ReactElement, useState, useContext, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity } from 'react-native';
+import { StyleSheet, Pressable, TextInput, View, Switch, Alert, Linking, Modal, FlatList, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Entypo, Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -8,11 +8,12 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { ThemeContext } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { useNavigation, useRouter } from 'expo-router';
-import { useGetPoints, useGetUsers, useUpdateTransport, useUpdateUser } from '@/api/profile';
+import { useGetPoints, useGetUserName, useGetUsers, useUpdateTransport, useUpdateUser } from '@/api/profile';
 import { useAuth } from '@/providers/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import LeaderboardUser from '@/components/LeaderboardUser';
 import { useNotification } from '@/providers/NotificationContext';
+import * as Notifications from 'expo-notifications';
 
 const data = [
   { label: 'Bus', value: 'bus' },
@@ -20,41 +21,129 @@ const data = [
   { label: 'Both', value: 'both' },
 ];
 
+const badges = [
+  { id: 1, name: "Eco Starter", points: 100, image: require('assets/images/100points.png') },
+  { id: 2, name: "Green Commuter", points: 500, image: require('assets/images/500points.png') },
+  { id: 3, name: "Planet Saver", points: 1000, image: require('assets/images/plantLover.png') },
+  { id: 4, name: "Eco Hero", points: 2000, image: require('assets/images/planetLover.png') },
+];
 
 export default function TabTwoScreen() {
   const { dark } = useTheme();
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
-  const [username, setUsername] = useState('User');
+  const [username, setUsername] = useState('user');
   const [newUsername, setNewUsername] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [transport, setTransport] = useState('');
   const [isFocus, setIsFocus] = useState(false);
   const [email, setEmail] = useState('');
   const router = useRouter();
-  const { user: dataUsername, profile } = useAuth();
+  const { user: dataUsername, profile, session } = useAuth();
   const { mutate: updateUsername } = useUpdateUser();
   const { mutate: updateTransport } = useUpdateTransport();
   const { data: users, error: usersError } = useGetUsers();
   const { data: points, error } = useGetPoints();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const { notification, setNotification } = useNotification();
-  const {isAdmin} = useAuth();
+  const { isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: getUser } = useGetUserName();
+  const earnedBadges = points
+    ? badges.filter((badge) => typeof badge.points === 'number' && typeof points === 'number' && points >= badge.points)
+    : [];
+  const lockedBadges = badges.filter((badge) => typeof badge.points === 'number' && typeof points === 'number' && points < badge.points);
+  const hasBadge = (badgePoints: number, userPoints: number | undefined): boolean => {
+    return typeof userPoints === 'number' && userPoints >= badgePoints;
+  };
+  const [previousPoints, setPreviousPoints] = useState<number | null>(null);
+  const getHighestBadge = (userPoints: number) => {
+    return badges
+      .filter((badge) => userPoints >= badge.points)
+      .sort((a, b) => b.points - a.points)[0];
+  };
+
+
+  useEffect(() => {
+    const channels = supabase.channel('custom-update-channel')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
+        (payload) => {
+          setTransport(payload.new.fav_transport);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof points === 'number' && previousPoints !== null) {
+      // Find newly unlocked badges
+      const newlyUnlockedBadges = badges.filter(
+        (badge) => points >= badge.points && (previousPoints < badge.points)
+      );
+
+      // Notify the user about newly unlocked badges
+      if (newlyUnlockedBadges.length > 0) {
+        const badgeNames = newlyUnlockedBadges.map((badge) => badge.name).join(', ');
+
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🏅New badge unlocked!",
+            body: `You got ${badgeNames} for making the planet a better place.`,
+            sound: "default",
+          },
+          trigger: null,
+        });
+      }
+    }
+
+    // Update previous points
+    setPreviousPoints(points ?? null);
+  }, [points]);
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) { console.error('Error fetching user: ', error.message); return; }
+
       if (user) {
         setEmail(user.email ?? '');
       }
-      if (dataUsername) {
+      if (!getUser) {
+        if (!dataUsername) return;
         setUsername(dataUsername);
       }
-      if (profile.fav_transport) {
+      else {
+        setUsername(getUser.username);
+      }
+
+      if (profile?.fav_transport) {
         setTransport(profile.fav_transport);
       }
     };
     fetchUser();
   }, []);
+  useEffect(() => {
+
+    const channels = supabase.channel('profiles-update-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session?.user.id}` },
+        (payload) => {
+          setUsername((payload.new as { username: string }).username);
+          queryClient.invalidateQueries({ queryKey: ['users'] });
+          queryClient.invalidateQueries({ queryKey: ['username'] });
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  }, [])
 
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
@@ -81,7 +170,7 @@ export default function TabTwoScreen() {
 
   const handlePress = () => {
     if (newUsername.trim()) {
-      setUsername(newUsername);
+      // setUsername(newUsername);
       updateUsername({ user: newUsername });
       setNewUsername('');
       setIsEditing(false);
@@ -97,6 +186,11 @@ export default function TabTwoScreen() {
         {
           text: 'Yes',
           onPress: async () => {
+            setUsername('');
+            setEmail('');
+            setTransport('');
+            setNewUsername('');
+            queryClient.clear();
             await supabase.auth.signOut();
             router.push('/sign-in');
           }
@@ -120,7 +214,7 @@ export default function TabTwoScreen() {
         {item.value === transport && (
           <AntDesign
             style={styles.icon}
-            color={isDarkMode ? '#0384fc' : 'black'}
+            color={isDarkMode ? '#025ef8' : 'black'}
             name="check"
             size={20}
           />
@@ -130,31 +224,34 @@ export default function TabTwoScreen() {
   };
   const navigation = useNavigation();
 
+
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: 100 }}
+      style={{ flex: 1, backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }}
+    >
+
       <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
         Account
       </Text>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable style={{ ...styles.viewLeader, backgroundColor: 'transparent' }} onPress={() => setModalVisible(true)}>
+        <Pressable style={{ ...styles.viewLeader, backgroundColor: '#025ef8',}} onPress={() => setModalVisible(true)}>
           <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
-          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: dark ? 'white' : 'black' }}>View Leaderboard</Text>
+          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: 'white'}}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points?.points}</Text>
-          <MaterialCommunityIcons name='star-four-points' color={'#0384fc'} size={30} style={{ marginRight: 20 }} />
+          <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points}</Text>
+          <MaterialCommunityIcons name='star-four-points' color={'#025ef8'} size={30} style={{ marginRight: 20, top: 5 }} />
         </View>
       </View>
-
 
       {/* LEADERBOARD MODAL */}
       <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)} animationType='slide'>
         <View style={{ ...styles.modal, backgroundColor: dark ? 'black' : 'white' }}>
-          {/* {LeaderboardUser(profile)} */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 60 }}>
             <Pressable onPress={() => setModalVisible(false)}>
-              <Feather name={'arrow-left'} size={40} color={'#0384fc'} />
+              <Feather name={'arrow-left'} size={40} color={'#025ef8'} />
             </Pressable>
           </View>
 
@@ -168,24 +265,60 @@ export default function TabTwoScreen() {
             style={{ marginTop: 25 }}
             data={users}
             renderItem={({ item, index }) => {
-              return <LeaderboardUser index={index} userN={item} />
+              const highestBadge = getHighestBadge(item.points);
+              return (
+                <LeaderboardUser
+                  index={index}
+                  userN={item}
+                  badge={highestBadge}
+                />
+              );
             }}
             contentContainerStyle={{ gap: 10 }}
           />
         </View>
       </Modal>
 
+      {/*BADGES*/}
+      <View style={styles.badgeContainer}>
+        <Text style={[styles.badgeTitle, { color: dark ? "white" : "black" }]}>Your Badges</Text>
+        <FlatList
+          data={badges}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.badgeItem}>
+              <Image
+                source={item.image}
+                style={StyleSheet.flatten([
+                  styles.badgeImage,
+                  typeof points === 'number' && points >= item.points ? styles.badgeEarned : styles.badgeLocked,
+                  hasBadge(item.points, points) ? styles.badgeEarned : styles.badgeLocked,
+                ])}
+              />
+              <Text style={[styles.badgeName, { color: dark ? "white" : "black" }]}>{item.name}</Text>
+              <Text style={[styles.badgePoints, { color: dark ? "white" : "black" }]}>
+                {typeof points === 'number' && points >= item.points ? "Unlocked" : `Unlock at ${item.points} points`}
+              </Text>
+            </View>
+          )}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        />
+      </View>
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-      {isAdmin && (
-              <View style={styles.adminPage}>
-              <TouchableOpacity onPress={()=>router.push('(admin)')} ><Text style={styles.adminText}>Go to admin page</Text></TouchableOpacity>
-            </View>
-      )}
+        {isAdmin && (
+          <View style={styles.adminPage}>
+            <TouchableOpacity onPress={() => router.push('(admin)')}>
+              <Text style={styles.adminText}>Go to admin page</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
+        {/* Username and Email Section */}
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
           <Text style={[styles.username, { color: isDarkMode ? 'white' : 'black' }]}>
-            {username}
+            {getUser?.username}
           </Text>
           <Pressable onPress={handlePencilPress}>
             <FontAwesome name="edit" size={18} color={isDarkMode ? 'white' : 'black'} style={styles.pencilIcon} />
@@ -213,10 +346,12 @@ export default function TabTwoScreen() {
             </Pressable>
           </>
         )}
+
+        {/* Dropdown and Switches */}
         {!isEditing && (
           <View style={styles.dropdownContainer}>
             <Dropdown
-              style={[styles.dropdown, isDarkMode && styles.dropdownDark, isFocus && { borderColor: '#0384fc' }]}
+              style={[styles.dropdown, isDarkMode && styles.dropdownDark, isFocus && { borderColor: '#025ef8' }]}
               placeholderStyle={[styles.placeholderStyle, isDarkMode && { color: 'white' }]}
               selectedTextStyle={[styles.selectedTextStyle, isDarkMode && { color: 'white' }]}
               inputSearchStyle={styles.inputSearchStyle}
@@ -229,21 +364,24 @@ export default function TabTwoScreen() {
               value={transport}
               onFocus={() => setIsFocus(true)}
               onBlur={() => setIsFocus(false)}
-              onChange={item => {
-                updateTransport({ fav_transport: item.value});
+              onChange={(item) => {
+                updateTransport({ fav_transport: item.value });
                 setTransport(transport);
                 setIsFocus(false);
               }}
-              renderLeftIcon={() => (
-                <AntDesign style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name="car" size={20} />
-                // <FontAwesome style={styles.icon} color={isDarkMode ? '#0384fc' : 'black'} name={transport === "bus" ? "bus" : "car"} size={20} />
-              )}
+              renderLeftIcon={() =>
+                transport === 'bus' ? (
+                  <FontAwesome style={styles.icon} color={'#025ef8'} name="bus" size={20} />
+                ) : (
+                  <AntDesign style={styles.icon} color={'#025ef8'} name="car" size={20} />
+                )
+              }
               renderItem={renderItem}
             />
             <View style={styles.switchContainer}>
               <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Dark Mode</Text>
               <Switch
-                trackColor={{ false: '#767577', true: '#0384fc' }}
+                trackColor={{ false: '#767577', true: '#025ef8' }}
                 thumbColor={isDarkMode ? '#f4f3f4' : '#f4f3f4'}
                 ios_backgroundColor="#3e3e3e"
                 onValueChange={toggleTheme}
@@ -253,16 +391,19 @@ export default function TabTwoScreen() {
             <View style={styles.notificationSwitchContainer}>
               <Text style={[styles.switchText, { color: isDarkMode ? 'white' : 'black' }]}>Notifications</Text>
               <Switch
-                trackColor={{ false: '#767577', true: '#0384fc' }}
+                trackColor={{ false: '#767577', true: '#025ef8' }}
                 thumbColor={notification ? '#f4f3f4' : '#f4f3f4'}
                 ios_backgroundColor="#3e3e3e"
-                onValueChange={(value) => setNotification(value)} // Toggle the notification state
-                value={notification} // Bind the state to the Switch
+                onValueChange={(value) => setNotification(value)}
+                value={notification}
               />
             </View>
             <View>
               <Pressable onPress={handleLogout} style={styles.logoutButton}>
-                <Text style={styles.logoutText}>Log Out</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialCommunityIcons name="logout" size={20} color="red" style={{ marginRight: 5, bottom:45 }} />
+                  <Text style={styles.logoutText}>Log Out</Text>
+                </View>
               </Pressable>
             </View>
             <View>
@@ -273,26 +414,26 @@ export default function TabTwoScreen() {
           </View>
         )}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1, // Ensures the content can grow and scroll properly
   },
-  adminPage:{
-    backgroundColor: '#0384fc',
-    width: '40%',
-    borderRadius: 5,
-    padding: 10,
-    bottom: 50,
-    right: 100,
-    alignItems:'center'
+  adminPage: {
+    backgroundColor: '#025ef8',
+    width: '30%',
+    borderRadius: 2,
+    padding: 8,
+    bottom: 317,
+    left: 120,
+    alignItems: 'center',
   },
-  adminText:{
+  adminText: {
     fontWeight: '500',
-    fontSize: 15,
+    fontSize: 10,
   },
   text: {
     fontSize: 40,
@@ -306,13 +447,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 10
   },
   viewLeader: {
     flexDirection: 'row',
     left: 20,
     backgroundColor: 'gainsboro',
-    borderRadius: 5,
-    padding: 5,
+    borderRadius: 25, 
+    padding: 11, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    elevation: 5, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5, 
+    shadowRadius: 4, 
   },
   modal: {
     flex: 1,
@@ -320,10 +469,11 @@ const styles = StyleSheet.create({
   usernameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10, // Adjust this value as needed to move the username closer to the email
+    marginTop: 15,
+    marginBottom: 10,
   },
   usernameContainerEditing: {
-    marginBottom: 20, // Adjust this value as needed to move the username closer to the TextInput
+    marginBottom: 20,
   },
   username: {
     fontSize: 40,
@@ -336,7 +486,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderWidth: 1,
     marginTop: 20,
-    marginBottom: 25,
+    marginBottom: 20,
     paddingHorizontal: 10,
     width: '80%',
     fontSize: 18,
@@ -344,16 +494,16 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   button: {
-    backgroundColor: '#0384fc',
+    backgroundColor: '#025ef8',
     padding: 13,
     borderRadius: 30,
-    marginBottom: 50,
+    marginBottom: 30,
   },
   buttonCancel: {
     backgroundColor: 'red',
     padding: 13,
     borderRadius: 30,
-    marginBottom: 190,
+    marginBottom: 140,
   },
   buttonText: {
     color: 'white',
@@ -423,13 +573,15 @@ const styles = StyleSheet.create({
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 58,
+    marginTop: 20,
     alignSelf: 'center',
+    bottom: 40,
   },
   notificationSwitchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 45,
+    bottom: 70,
     alignSelf: 'center',
   },
   switchText: {
@@ -455,14 +607,60 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
+    bottom: 30,
   },
   feedbackText: {
-    color: '#0384fc',
+    color: '#025ef8',
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 10,
-    marginBottom: 64,
+    bottom: 40,
+  },
+  ecoMessageContainer: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#e0f7e9',
+    borderRadius: 10,
+  },
+  ecoMessage: {
+    fontSize: 16,
+    color: '#2e7d32',
+    textAlign: 'center',
+  },
+  badgeContainer: {
+    marginTop: 50,
+  },
+  badgeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  badgeItem: {
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  badgeImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 5,
+  },
+  badgeEarned: {
+    opacity: 1,
+  },
+  badgeLocked: {
+    opacity: 0.3,
+  },
+  badgeName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  badgePoints: {
+    fontSize: 14,
+    color: '#757575',
+    textAlign: 'center',
   },
 });

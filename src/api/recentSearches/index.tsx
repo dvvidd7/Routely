@@ -12,7 +12,8 @@ export const useFetchSearches = () => {
         const { data, error } = await supabase
           .from('searches')
           .select('*')
-          .eq('user_id', session?.user.id);
+          .eq('user_id', session?.user.id)
+          .order('created_at', {ascending: false});
         if (error) {
           throw new Error(error.message);
         }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Image,StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -20,6 +20,9 @@ import { useTransportModal } from '../TransportModalContext';
 import BusNavigation from '@/components/BusNavigation';
 import * as Notifications from 'expo-notifications';
 import { useNotification } from '@/providers/NotificationContext';
+import { Divider } from 'react-native-paper';
+import Colors from '@/constants/Colors';
+import { useAuth } from '@/providers/AuthProvider';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -27,6 +30,12 @@ const INITIAL_REGION = {
   latitudeDelta: 1,
   longitudeDelta: 1,
 };
+type Region = {
+  latitude: any,
+  longitude: any,
+  latitudeDelta: any,
+  longitudeDelta: any,
+}
 
 type Station = {
   transit_details: { departure_stop: { name: any; location: { lat: any; lng: any; }; }; arrival_stop: { name: any; location: { lat: any; lng: any; }; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; };
@@ -53,7 +62,7 @@ const hazards: Hazard[] = [
   { id: 1, label: "Accident", icon: "🚗💥" },
   { id: 2, label: "Traffic Jam", icon: "🚦" },
   { id: 3, label: "Roadblock", icon: "🚧" },
-  { id: 4, label: "Weather Hazard", icon: "🌧️" },
+  { id: 4, label: "Ticket inspectors", icon: "👮" },
 ];
 
 export default function TabOneScreen() {
@@ -62,7 +71,7 @@ export default function TabOneScreen() {
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const { transportModalVisible, setTransportModalVisible } = useTransportModal();
+  const { transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const mapRef = useRef<MapView>(null);
@@ -81,6 +90,10 @@ export default function TabOneScreen() {
   const [isMapReady, setIsMapReady] = useState(false);
   const [routeIndex, setRouteIndex] = useState<number>(0);
   const [multipleStations, setMultipleStations] = useState<boolean>(false);
+  const [fakeMarkerShadow, setFakeMarkerShadow] = useState<boolean>(false);
+  const [pinOrigin, setPinOrigin] = useState<Region>();
+  const [displayMarker, setDisplayMarker] = useState<boolean>(false);
+  const [pinpointDetails, setPinpointDetails] = useState<string>('');
   const [hazardMarkers, setHazardMarkers] = useState<{
     created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
   }[]>([]);
@@ -95,10 +108,10 @@ export default function TabOneScreen() {
     Uber: { price: string; time: number };
     RealTime: { googleDuration: number; distance: number };
   } | null>(null);
-
+  
   const openTransportModal = () => {
     setTransportModalVisible(true);
-    setSearchVisible(true);
+    setSearchVisible(false);
   };
   const handleRouteIndexIncrease = () => {
     if (routeStops.length - 1 <= routeIndex) return console.warn("Reached end of stations!");
@@ -108,40 +121,39 @@ export default function TabOneScreen() {
     if (routeIndex <= 0) return console.warn("Reached end of stations!");
     setRouteIndex(routeIndex - 1);
   };
-
   const closeTransportModal = () => {
     setTransportModalVisible(false);
     setSearchVisible(false);
   };
-   const getUserLocation = async () => {
-          let { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') {
-            console.error('Permission to access location was denied');
-            return null;
-          }
-        
-          let location = await Location.getCurrentPositionAsync({});
-          return location.coords;
-        };
-      
-        const getDistanceFromLatLonInMeters = (
-          lat1: number,
-          lon1: number,
-          lat2: number,
-          lon2: number
-        ) => {
-          const R = 6371000; // Radius of the earth in meters
-          const dLat = ((lat2 - lat1) * Math.PI) / 180;
-          const dLon = ((lon2 - lon1) * Math.PI) / 180;
-          const a =
-            0.5 -
-            Math.cos(dLat) / 2 +
-            (Math.cos((lat1 * Math.PI) / 180) *
-              Math.cos((lat2 * Math.PI) / 180) *
-              (1 - Math.cos(dLon))) /
-              2;
-          return R * 2 * Math.asin(Math.sqrt(a));
-        };
+  const getUserLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      console.error('Permission to access location was denied');
+      return null;
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+    return location.coords;
+  };
+
+  const getDistanceFromLatLonInMeters = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const R = 6371000; // Radius of the earth in meters
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      0.5 -
+      Math.cos(dLat) / 2 +
+      (Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        (1 - Math.cos(dLon))) /
+      2;
+    return R * 2 * Math.asin(Math.sqrt(a));
+  };
   const handleRecentSearchPress = () => {
     setIsFocused(false);
     setRouteVisible(true);
@@ -194,6 +206,7 @@ export default function TabOneScreen() {
       }
     });
   };
+
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   useEffect(() => {
     const startTracking = async () => {
@@ -214,7 +227,7 @@ export default function TabOneScreen() {
           const { latitude, longitude } = location.coords;
 
           // Update the current location
-          
+
 
           // Compare with the previous location
           if (previousLocation) {
@@ -224,7 +237,7 @@ export default function TabOneScreen() {
               latitude,
               longitude
             );
-            if(distance < 50){
+            if (distance < 50) {
               return;
             }
             if (distance > 50) { // Threshold for movement (10 meters)
@@ -267,8 +280,8 @@ export default function TabOneScreen() {
       setTimeout(() => setLoadingRoute(false), 1000); // Simulate loading
     }
   }, [stationVisible, routeStops]);
-  
-  {loadingRoute && <ActivityIndicator size="large" color="#0384fc" />}
+
+  { loadingRoute && <ActivityIndicator size="large" color={Colors.light.themeColorDarker} /> }
 
   useEffect(() => {
     if (notification) {
@@ -295,7 +308,7 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
-  
+
   useEffect(() => {
     if (stationVisible && routeStops.length > 0) {
       setTimeout(() => {
@@ -406,12 +419,16 @@ export default function TabOneScreen() {
         return;
       }
 
-      // Filter out hazards older than 24 hours
+      // Filter out hazards older than 2 hours
       const now = new Date();
-      const filteredHazards = (data || []).filter((hazard) => {
-        const hazardTime = new Date(hazard.created_at);
-        return now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-      });
+
+      if (!data) return [];
+      const filteredHazards = Array.isArray(data)
+        ? data.filter((hazard) => {
+          const hazardTime = new Date(hazard.created_at);
+          return now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        })
+        : [];
 
       setHazardMarkers(filteredHazards);
     };
@@ -458,7 +475,7 @@ export default function TabOneScreen() {
             const hazardTime = new Date(hazard.created_at);
 
             if (now.getTime() - hazardTime.getTime() <= 2 * 60 * 60 * 1000) {
-              setHazardMarkers((prev) => [
+              setHazardMarkers((prev: typeof hazardMarkers) => [
                 ...prev,
                 {
                   id: hazard.id,
@@ -501,16 +518,17 @@ export default function TabOneScreen() {
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            setHazardMarkers((prev) =>
-              prev.filter((hazard) => hazard.id !== payload.old.id)
-            );
+            setHazardMarkers((prev) => {
+              if (!Array.isArray(prev)) return [];
+              return prev.filter((hazard) => hazard.id !== payload.old.id);
+            });
           }
         }
       )
-      .subscribe();
+    const subscription = channel.subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      subscription.unsubscribe();
     };
   }, [notification]);
 
@@ -529,25 +547,53 @@ export default function TabOneScreen() {
           `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
         );
         const data = await response.json();
+
+        // console.log("API Response:", data); // Log the API response for debugging
+
+        // Check if the response contains routes
         if (!data.routes || data.routes.length === 0) {
           console.warn("No transit routes found.");
           setRouteStops([]);
           return;
         }
-        const steps = data.routes[0].legs[0].steps.filter(
-          (step: { travel_mode: string; }) => step.travel_mode === "TRANSIT"
+
+        // Safely access legs
+        const legs = data.routes[0]?.legs;
+        if (!legs || legs.length === 0) {
+          console.warn("No legs found in the route.");
+          setRouteStops([]);
+          return;
+        }
+
+        // Safely access steps with fallback to empty array
+        const steps = legs?.[0]?.steps ?? [];
+        if (steps.length === 0) {
+          console.warn("No steps found in the route.");
+          setRouteStops([]);
+          return;
+        }
+
+        // Log travel modes to help debug
+        // console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
+
+        // Filter transit steps (case-insensitive, and ensure transit_details exists)
+        if (!steps) return [];
+        const transitSteps = steps.filter(
+          (step: any) =>
+            step?.travel_mode?.toUpperCase() === "TRANSIT" && step?.transit_details
         );
 
-        const routeStations = steps.map((step: Station) => ({
+        // Map transit steps to route stops
+        const routeStations = transitSteps.map((step: any) => ({
           from: step.transit_details?.departure_stop?.name || "Unknown stop",
           to: step.transit_details?.arrival_stop?.name || "Unknown stop",
           fromCoords: {
-            lat: step.transit_details.departure_stop.location.lat,
-            lng: step.transit_details.departure_stop.location.lng,
+            lat: step.transit_details?.departure_stop?.location?.lat || 0,
+            lng: step.transit_details?.departure_stop?.location?.lng || 0,
           },
           toCoords: {
-            lat: step.transit_details.arrival_stop.location.lat,
-            lng: step.transit_details.arrival_stop.location.lng,
+            lat: step.transit_details?.arrival_stop?.location?.lat || 0,
+            lng: step.transit_details?.arrival_stop?.location?.lng || 0,
           },
           line: step.transit_details?.line?.short_name || "N/A",
           vehicle: step.transit_details?.line?.vehicle?.type || "Transit",
@@ -557,9 +603,9 @@ export default function TabOneScreen() {
         }));
 
         setRouteStops(routeStations);
-      }
-      catch (error) {
-        console.error(error);
+      } catch (error) {
+        console.error("Error fetching transit route:", error);
+        setRouteStops([]);
       }
     };
 
@@ -595,6 +641,8 @@ export default function TabOneScreen() {
     else setEstimatedBus('-');
   }, [routeStops]);
 
+
+
   const handleMyLocationPress = async () => {
     try {
       const location = await Location.getCurrentPositionAsync({});
@@ -615,7 +663,7 @@ export default function TabOneScreen() {
     }
   };
 
-  const handleControlPanelButton = () => {
+  const handleHazardPanelButton = () => {
     setModalVisible(true);
   };
 
@@ -634,25 +682,30 @@ export default function TabOneScreen() {
     console.log("Checking for recent hazards since:", thirtyMinutesAgo);
 
     const { data: recentHazards, error: queryError } = await supabase
-    .from("hazards")
-    .select("*")
-    .eq("email", userEmail)
-    .gt("created_at", thirtyMinutesAgo);
-  
-  if (queryError) {
-    console.error("Error checking recent hazards:", queryError);
-    Alert.alert("Error", "Couldn't verify report limit.");
-    return;
-  }
+      .from("hazards")
+      .select("*")
+      .eq("email", userEmail)
+      .gt("created_at", thirtyMinutesAgo);
 
-  console.log("Recent hazards:", recentHazards);
+    if (queryError) {
+      console.error("Error checking recent hazards:", queryError);
+      Alert.alert("Error", "Couldn't verify report limit.");
+      return;
+    }
 
-  // ✅ Check if the user has reached the 5 report limit
-  if (recentHazards.length >= 5) {
-    console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
-    Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
-    return;
-  }
+    if (!Array.isArray(recentHazards)) {
+      console.error("Recent hazards is not an array:", recentHazards);
+      return;
+    }
+
+    console.log("Recent hazards:", recentHazards);
+
+    // ✅ Check if the user has reached the 5 report limit
+    if (recentHazards.length >= 5) {
+      console.log("Limit reached, user has reported 5 hazards in the last 30 minutes");
+      Alert.alert("Limit Reached", "You can report up to 5 hazards every 30 minutes.");
+      return;
+    }
 
     const newHazard = {
       latitude: userLocation.latitude,
@@ -682,6 +735,22 @@ export default function TabOneScreen() {
     }
   };
 
+  const handleConfirmPinpoint = () => {
+    dispatch(
+      setDestination(
+        {
+          location: {
+            lat: pinOrigin?.latitude,
+            lng: pinOrigin?.longitude,
+          },
+          description: pinpointDetails
+        }
+      )
+    );
+    setPinpointModalVisible(false);
+    setDisplayMarker(false); 
+    handleSearch(); 
+  }
 
   const handleCancelTransportSelection = () => {
     closeTransportModal();
@@ -696,7 +765,11 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
+  const handleSearch = () => {
+    openTransportModal();
+    setRouteVisible(true);
 
+  }
   const handleSearchPress = () => {
     setIsFocused(true);
   };
@@ -714,10 +787,21 @@ export default function TabOneScreen() {
     setBusNavVisible(true);
     setTransportModalVisible(false);
   }
+  async function getLocationName(lat: number,lng: number){
+    const apiKey = GOOGLE_MAPS_PLACES_LEGACY;
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
+    const data = await response.json();
+    if(data.results && data.results.length > 0){
+      return data.results[0].formatted_address;
+    }
+    return "Unknown location";
+  }
+  
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
+
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -725,6 +809,14 @@ export default function TabOneScreen() {
             initialRegion={INITIAL_REGION}
             showsUserLocation={true}
             showsMyLocationButton={false} // Hide the default button
+            onRegionChange={(region, details) => {
+              if(displayMarker){
+                setFakeMarkerShadow(true);
+                setPinOrigin(region);
+                getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
+              }
+            }}
+            onRegionChangeComplete={() => setFakeMarkerShadow(false)}
             onMapReady={() => {
               setIsMapReady(true);
               console.log("Map is ready");
@@ -738,6 +830,7 @@ export default function TabOneScreen() {
               longitudeDelta: 0.01,
             }}
           >
+
             {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
               <MapViewDirections
                 origin={{
@@ -747,7 +840,7 @@ export default function TabOneScreen() {
                 destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
-                strokeColor='#0384fc'
+                strokeColor={Colors.light.themeColorDarker}
               />
             )}
             {destination?.location && userLocation && routeVisible && (
@@ -783,10 +876,10 @@ export default function TabOneScreen() {
                 title={`Departure number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.from}
               >
-                  <Image
+                <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
+                  style={{ width: 65, height: 65 }}
+
                 />
               </Marker>
             )}
@@ -800,31 +893,31 @@ export default function TabOneScreen() {
                 title={`Destination number ${routeStops.indexOf(rs) + 1}`}
                 description={rs.to}
               >
-                  <Image
+                <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
+                  style={{ width: 65, height: 65 }}
+
                 />
               </Marker>
 
             )}
 
             {stationVisible && routeStops.length > 0 && routeStops.map((rs, index) => (
-                <MapViewDirections
-                   key={index}
-                   origin={{
-                      latitude: rs.fromCoords.lat,
-                      longitude: rs.fromCoords.lng,
-                  }}
-                  destination={{
-                     latitude: rs.toCoords.lat,
-                     longitude: rs.toCoords.lng,
-                  }}
-                  apikey={GOOGLE_MAPS_PLACES_LEGACY}
-                  strokeWidth={5}
-                  strokeColor={routeIndex === index ? '#0384fc' : 'gray'}
-                  />  
-                ))}
+              <MapViewDirections
+                key={index}
+                origin={{
+                  latitude: rs.fromCoords.lat,
+                  longitude: rs.fromCoords.lng,
+                }}
+                destination={{
+                  latitude: rs.toCoords.lat,
+                  longitude: rs.toCoords.lng,
+                }}
+                apikey={GOOGLE_MAPS_PLACES_LEGACY}
+                strokeWidth={5}
+                strokeColor={routeIndex === index ? Colors.light.themeColorDarker : 'gray'}
+              />
+            ))}
 
             {hazardMarkers.map((hazard) => (
               <Marker
@@ -833,34 +926,34 @@ export default function TabOneScreen() {
                 title={hazard.label}
                 description={`Reported at ${new Date(hazard.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
               >
-              {hazard.icon === '🚗💥' && (
+                {hazard.icon === '🚗💥' && (
                   <Image
-                  source={require(`../../../assets/images/accident.png`)}
-                  style={{ width: 70, height: 70 }}
-                  resizeMode='center'
-                />
-              )}
-              {hazard.icon === '🚦' && (
+                    source={require(`../../../assets/images/accident.png`)}
+                    style={{ width: 70, height: 70 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.icon === '🚦' && (
                   <Image
-                  source={require(`../../../assets/images/trafficjam.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
-              )}
-              {hazard.icon === '🚧' && (
+                    source={require(`../../../assets/images/trafficjam.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.icon === '🚧' && (
                   <Image
-                  source={require(`../../../assets/images/roadblock.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
-              )}
-              {hazard.icon === '🌧️' && (
+                    source={require(`../../../assets/images/roadblock.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.icon === '👮' && (
                   <Image
-                  source={require(`../../../assets/images/weather.png`)}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode='center'
-                />
-              )}
+                    source={require(`../../../assets/images/inspector.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
               </Marker>
             ))}
           </MapView>
@@ -873,7 +966,7 @@ export default function TabOneScreen() {
           )}
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true) }} />
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); }} />
           )}
 
           {/* MY LOCATION BUTTON */}
@@ -881,13 +974,26 @@ export default function TabOneScreen() {
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
+          {/* FAKE MARKER */}
+          {displayMarker && (
+            <View style={{...styles.fakeMarkerContainer, top: fakeMarkerShadow ? '49%' : '50%'}}>
+              {fakeMarkerShadow && (
+                <Image style={styles.fakeMarker} source={require('../../../assets/images/pin2shadow.png')} />
+              )}
+              {!fakeMarkerShadow && (
+                <Image style={styles.fakeMarker} source={require('../../../assets/images/pin2.png')} />
+              )}
+            </View>
+          )}
+
+
           {/* HAZARD BUTTON */}
           <TouchableOpacity
             style={[
               styles.HazardButton,
               { backgroundColor: dark ? "black" : "white" }
             ]}
-            onPress={handleControlPanelButton}
+            onPress={handleHazardPanelButton}
           >
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
@@ -902,7 +1008,26 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
+                renderRightButton ={() => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setDisplayMarker(true);
+                      setIsFocused(false);
+                      setPinpointModalVisible(true);
+                      setSearchVisible(false);
+                    }}
+                    style={{
+                      height: 60,
+                      justifyContent: 'center',
+                      alignItems: 'flex-end',
+                      left: '4%',
+                    }}
+                  >
+                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
+                  </TouchableOpacity>
+                  )}
                 onPress={(data, details = null) => {
+                  // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
                   dispatch(
                     setDestination({
@@ -930,6 +1055,21 @@ export default function TabOneScreen() {
                     isFocused && styles.searchInputFocused,
                     dark && styles.searchInputDark
                   ],
+                  listView: {
+                    backgroundColor: dark ? 'black' : 'white',
+                    zIndex: 999,
+                    position: 'absolute',
+                    top: 60,
+                    borderRadius: 4,
+                  },
+                  row: {
+                    backgroundColor: dark ? 'black' : '#fff',
+                    padding: 13,
+                    height: 50,
+                    flexDirection: 'row',
+                  },
+                  description: { color: dark ? 'white' : 'black', fontSize: 16, }
+
                 }}
                 textInputProps={{
                   autoFocus: true,
@@ -948,28 +1088,70 @@ export default function TabOneScreen() {
                   renderItem={({ item }) => <RecentSearch onPress={handleRecentSearchPress} searchRef={searchRef} userSearch={item} />}
                   contentContainerStyle={{ gap: 5 }}
                   style={{ position: "relative", top: 170, left: 25 }}
+                  ItemSeparatorComponent={() => <Divider />}
                 />
               )}
             </View>
           </Modal>
 
-
           {/* Hazard Selection Modal */}
-          <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(false)}
+          >
             <View style={styles.modalContainer}>
               <View style={[styles.modalContent, { backgroundColor: dark ? "black" : "white" }]}>
-                <Text style={styles.modalTitle}>Select a Hazard</Text>
-                {hazards.map((hazard) => (
-                  <TouchableOpacity key={hazard.id} style={styles.optionButton} onPress={() => handleSelectHazard(hazard)}>
-                    <Text style={styles.optionText}>{hazard.icon} {hazard.label}</Text>
-                  </TouchableOpacity>
-                ))}
+                <Text style={[styles.modalTitle, { color: dark ? "white" : "black" }]}>
+                  Select a Hazard
+                </Text>
+                <View style={styles.hazardGrid}>
+                  {hazards.map((hazard) => (
+                    <TouchableOpacity
+                      key={hazard.id}
+                      style={[styles.hazardOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+                      onPress={() => handleSelectHazard(hazard)}
+                    >
+                    {hazard.label === "Traffic Jam" && (
+                      <Image source={require('../../../assets/images/jam.png')} style={styles.hazardLogo} />
+                    )}
+                    {hazard.label === "Roadblock" && (
+                      <Image source={require('../../../assets/images/roadblocklogo.png')} style={styles.hazardLogo} />
+                    )}
+                    {hazard.label === "Ticket inspectors" && (
+                      <Image source={require('../../../assets/images/inspectorlogo.png')} style={styles.hazardLogo} />
+                    )}
+                    {hazard.label === "Accident" && (
+                      <Image source={require('../../../assets/images/accidentlogo.png')} style={styles.hazardLogo} />
+                    )}
+                      {/* <Text style={styles.hazardIcon}>{hazard.icon}</Text> */}
+                      <Text style={[styles.hazardLabel, { color: dark ? "white" : "black" }]}>{hazard.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </Modal>
+          {/* Pinpoint selection menu */}
+          {pinpointModalVisible && (
+            <View style={{...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white'}}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
+                  <Text style={{fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25}}>Confirm destination</Text>
+                  <TouchableOpacity onPress={() => {setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false);}}>
+                    <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
+                  </TouchableOpacity>
+                </View>
+                  <Text style={{fontWeight: '400', color: dark ? 'white' : 'black', fontSize: 20}}>{pinpointDetails}</Text>
+                  <TouchableOpacity style={styles.confirmButtonPin} onPress={handleConfirmPinpoint}>
+                    <Text style={styles.cancelText}>Confirm</Text>
+                  </TouchableOpacity>
+            </View>
+          )}
+
           {/* Transport Selection Panel (Replaces Modal) */}
           {transportModalVisible && (
             <View style={{
@@ -1066,7 +1248,7 @@ const styles = StyleSheet.create({
   },
   searchInputFocused: {
     borderWidth: 2,
-    borderColor: '#0384fc',
+    borderColor: Colors.light.themeColorDarker,
     height: 60,
     borderRadius: 20,
     paddingLeft: 25,
@@ -1115,6 +1297,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
+    bottom: 80
   },
   optionText: {
     fontSize: 16,
@@ -1129,7 +1312,7 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     backgroundColor: "#eee",
-    padding: 15,
+    padding: 10,
     width: "100%",
     borderRadius: 10,
     alignItems: "center",
@@ -1160,7 +1343,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 180,
     right: 35,
-    backgroundColor: "#0384fc",
+    backgroundColor: Colors.light.themeColorDarker,
     borderRadius: 60,
     padding: 20,
     elevation: 10,
@@ -1179,26 +1362,65 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
+  
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0)",
   },
   modalContent: {
-    padding: 16,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    padding: 20,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
     width: "100%",
-    alignItems: 'center'
+    height: '53%',
+    alignItems: "center",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
+  hazardLogo:{
+    width: 60,
+    height: 60,
     marginBottom: 10,
   },
+  modalTitle: {
+    fontSize: 25,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  hazardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  hazardOption: {
+    width: "48%",
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  hazardIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  hazardLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
   hazardButtonOptions: {
-    padding: 15,
+    padding: 12,
     marginVertical: 5,
     backgroundColor: "#ddd",
     borderRadius: 15,
@@ -1210,7 +1432,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   closeButton: {
-    marginTop: 10,
+    marginTop: 0,
     padding: 10,
     backgroundColor: "#ff4d4d",
     borderRadius: 10,
@@ -1220,6 +1442,22 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold"
   },
+  circularIcon: {
+    width: 60, // Equal width and height
+    height: 60,
+    borderRadius: 30, // Half of the width/height to make it circular
+    justifyContent: "center", // Center the content horizontally
+    alignItems: "center", // Center the content vertically
+    backgroundColor: "#f0f0f0", // Background color for the circle
+    elevation: 5, // Shadow for Android
+    shadowColor: "#000", // Shadow for iOS
+    shadowOffset: { width: 0, height: 2 }, // Shadow offset
+    shadowOpacity: 0.2, // Shadow opacity
+    shadowRadius: 4, // Shadow radius
+  },
+  circularIconDark: {
+    backgroundColor: "#1c1c1c", // Dark mode background color
+  },
   rideOption: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1227,8 +1465,8 @@ const styles = StyleSheet.create({
     padding: 15,
     marginVertical: 10,
     borderRadius: 10,
-    elevation: 2, // Adds shadow for Android
-    shadowColor: "#000", // Adds shadow for iOS
+    elevation: 2,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -1262,7 +1500,46 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 15,
     shadowRadius: 10,
-  }
+  },
+  fakeMarker:{
+    height: 70,
+    width: 70,
+    zIndex: 501,
+  },
+  fakeMarkerContainer:{
+    top: '50%',
+    left:'50%',
+    marginLeft: -24,
+    marginTop: -48,
+    zIndex: 50,
+    position: 'absolute'
+  },
+  pinPointMenu: {
+      position: 'absolute',
+      bottom: 40,
+      height: 210,
+      left: 10,
+      right: 10,
+      zIndex: 50,
+      borderRadius: 20,
+      padding: 20,
+      elevation: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8
+  },
+  confirmButtonPin: {
+    position: 'absolute',
+    bottom: 15,
+    left: 20,
+    right: 20,
+    marginTop: 0,
+    padding: 10,
+    backgroundColor: Colors.light.themeColorDarker,
+    borderRadius: 15,
+    alignItems: "center"
+  },
 });
 
 function setRideInfo(arg0: {

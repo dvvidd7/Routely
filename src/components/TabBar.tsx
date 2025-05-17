@@ -5,11 +5,11 @@ import TabBarButton from './TabBarButton';
 import { useState } from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTransportModal } from '@/app/TransportModalContext';
+import React from 'react';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & { transportModalVisible: boolean }) {
   const { colors, dark } = useTheme();
-  const { transportModalVisible } = useTransportModal();
-
+  const { transportModalVisible, pinpointModalVisible } = useTransportModal();
   const isAdmin = state.routes.length === 3; // Check if there are 3 tabs (admin page)
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
   const buttonWidth = dimensions.width / state.routes.length;
@@ -30,7 +30,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
   });
 
   // Render an empty view if the modal is visible
-  if (transportModalVisible) {
+  if (transportModalVisible || pinpointModalVisible) {
     return <View style={{ height: 0 }} />;
   }
 
@@ -41,7 +41,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
           animatedStyle,
           {
             position: 'absolute',
-            backgroundColor: '#0384fc',
+            backgroundColor: '#025ef8',
             borderRadius: 30,
             marginHorizontal: 25,
             height: dimensions.height - 15,
@@ -84,7 +84,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps & {
             isFocused={isFocused}
             routeName={route.name}
             label={label}
-            color={isFocused ? '#FFF' : '#0384fc'}
+            color={isFocused ? '#FFF' : '#025ef8'}
           />
         );
       })}

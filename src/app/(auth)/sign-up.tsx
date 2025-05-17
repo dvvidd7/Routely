@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Image, TextInput, Pressable, Alert, ImageBackground, TouchableOpacity } from 'react-native';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Stack } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -16,10 +16,11 @@ export default function SignIn() {
   const [hidden, setHidden] = useState<boolean>(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState('');
   const router = useRouter();
   const { dark } = useTheme();
   const [loading, setLoading] = useState(false);
+    const emailInputRef = useRef<TextInput>(null);
+    const passInputRef = useRef<TextInput>(null);
   const resetFields = () => {
     setEmail('');
     setPassword('');
@@ -29,13 +30,23 @@ export default function SignIn() {
   //     resetFields();
   // };
   async function signUpWithEmail() {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const {data:authData, error: authError } = await supabase.auth.signUp({ email, password });
     setLoading(true);
 
-    if (error) Alert.alert(error.message);
+    if (authError) Alert.alert(authError.message);
     setLoading(false);
-    
-    router.navigate('/sign-in');
+    // const userId = authData.user?.id;
+    // const {data: incId, error: incIdError} = await supabase.from('profiles')
+    // .select('incrementing_id')
+    // .eq('id', userId).single();
+    // if(incIdError) return console.error("Error reading increment id: " + incIdError);
+
+    // const {data: usernameUpdate, error: usernameUpdateError} = await supabase
+    // .from('profiles')
+    // .update({username: `user${incId?.incrementing_id}`})
+    // .eq('id', userId);
+    // if(usernameUpdateError) return console.error("Error updating username: " + usernameUpdateError.message);
+    router.push('/sign-in');
     resetFields();
   }
 
@@ -52,12 +63,12 @@ export default function SignIn() {
 
       <View style={{ ...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0 }}>
         <FontAwesome name='envelope' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={email} onChangeText={setEmail} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
+        <TextInput ref={emailInputRef} onSubmitEditing={() => {passInputRef.current?.focus()}} submitBehavior='blurAndSubmit' returnKeyType='next' cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={email} onChangeText={setEmail} placeholder='E-mail' placeholderTextColor={'gainsboro'} />
       </View>
 
       <View style={{ ...styles.inputContainer, backgroundColor: dark ? '#000' : 'white', borderColor: dark ? '#807f7f' : 'gainsboro', borderWidth: dark ? 2 : 0 }}>
         <FontAwesome name='lock' size={24} color={'#9A9A9A'} style={styles.inputIcon} />
-        <TextInput cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={password} onChangeText={setPassword} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
+        <TextInput ref={passInputRef} returnKeyType='next' cursorColor={dark ? 'white' : 'black'} style={{ ...styles.textInput, color: dark ? 'white' : 'black' }} value={password} onChangeText={setPassword} placeholder='Password' placeholderTextColor={'gainsboro'} secureTextEntry={hidden ? true : false} />
         <Pressable onPress={() => { hidden ? setHidden(false) : setHidden(true) }}>
           <FontAwesome name={hidden ? 'eye' : 'eye-slash'} size={24} color={'#9A9A9A'} style={styles.hiddenIcon} />
         </Pressable>

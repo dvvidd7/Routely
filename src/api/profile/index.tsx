@@ -1,6 +1,7 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/providers/AuthProvider'
+import { Alert } from 'react-native';
 import { Text } from 'react-native';
 export const useUpdateUser = () => {
     const {session} = useAuth();
@@ -15,6 +16,9 @@ export const useUpdateUser = () => {
             if(error) throw new Error(error.message);
             return updatedUser;
         },
+        async onError(error){
+            Alert.alert("That username already exists!");
+        }
     })
 };
 export const useUpdateTransport = () => {
@@ -35,23 +39,24 @@ export const useUpdateTransport = () => {
     })
 };
 export const useGetPoints = () => {
-    const {session} = useAuth();
+    const { session } = useAuth();
 
-    return useQuery({
+    return useQuery<number, Error>({
         queryKey: ['points'],
-        async queryFn(){
-            const {data, error} = await supabase
-            .from('profiles')
-            .select("points")
-            .eq('id', session?.user.id)
-            .single();
+        async queryFn() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select("points")
+                .eq('id', session?.user.id)
+                .single();
 
-            if(error) throw new Error(error.message);
+            if (error) throw new Error(error.message);
 
-            return data;
-        }
-    })
-}
+            // Ensure the returned value is a number
+            return data?.points ?? 0; // Default to 0 if points is undefined
+        },
+    });
+};
 export const useUpdatePoints = () => {
     const {session} = useAuth();
     const query = useQueryClient();
@@ -81,6 +86,22 @@ export const useGetUsers = () => {
             if(error) throw new Error(error.message);
 
             return data;
+        }
+    })
+}
+export const useGetUserName = () => {
+    const {session} = useAuth();
+    return useQuery({
+        queryKey: ['username'],
+        async queryFn(){
+            const {data:user, error} = await supabase
+            .from("profiles")
+            .select("username")
+            .eq('id', session?.user.id).single();
+
+            if(error) throw new Error(error.message);
+
+            return user;
         }
     })
 }

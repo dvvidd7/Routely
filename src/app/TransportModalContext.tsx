@@ -1,18 +1,21 @@
-import { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
-const TransportModalContext = createContext({
+const ModalContext = createContext({
   transportModalVisible: false,
+  pinpointModalVisible: false,
   setTransportModalVisible: (value: boolean) => {},
+  setPinpointModalVisible: (value: boolean) => {},
 });
 
 export const TransportModalProvider = ({ children }: { children: React.ReactNode }) => {
   const [transportModalVisible, setTransportModalVisible] = useState(false);
+  const [pinpointModalVisible, setPinpointModalVisible] = useState(false);
 
   return (
-    <TransportModalContext.Provider value={{ transportModalVisible, setTransportModalVisible }}>
+    <ModalContext.Provider value={{ transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible }}>
       {children}
-    </TransportModalContext.Provider>
+    </ModalContext.Provider>
   );
 };
 
-export const useTransportModal = () => useContext(TransportModalContext);
+export const useTransportModal = () => useContext(ModalContext);
