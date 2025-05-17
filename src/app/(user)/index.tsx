@@ -87,7 +87,7 @@ export default function TabOneScreen() {
     lon: number;
     aqi: number | string;
     station: { name: string };
-    // add other properties if needed
+    dominentpol?: string; 
   };
   const [aqiStations, setAqiStations] = useState<AQIStation[]>([]);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
@@ -683,27 +683,35 @@ export default function TabOneScreen() {
 
   useEffect(() => {
     if (userLocation?.latitude && userLocation?.longitude) {
-      const fetchAQI = async () => {
+      const fetchMultipleStations = async () => {
+        const delta = 0.5; //marimea ariei
+        const lat1 = userLocation.latitude - delta;
+        const lon1 = userLocation.longitude - delta;
+        const lat2 = userLocation.latitude + delta;
+        const lon2 = userLocation.longitude + delta;
+
+        const url = `https://api.waqi.info/map/bounds/?latlng=${lat1},${lon1},${lat2},${lon2}&token=${AQI_TOKEN}`;
+
         try {
-          const response = await fetch(
-            `https://api.waqi.info/feed/geo:${userLocation.latitude};${userLocation.longitude}/?token=${AQI_TOKEN}`
-          );
+          const response = await fetch(url);
           const json = await response.json();
+
           if (json.status === 'ok') {
-            setAqiData(json.data);
+            setAqiStations(json.data);
           } else {
             console.warn('AQI API error:', json.data);
-            setAqiData(null);
+            setAqiStations([]);
           }
         } catch (error) {
-          console.error('Error fetching AQI:', error);
-          setAqiData(null);
+          console.error('Error fetching AQI stations:', error);
+          setAqiStations([]);
         }
       };
 
-      fetchAQI();
+      fetchMultipleStations();
     }
   }, [userLocation]);
+
 
   const handleMyLocationPress = async () => {
     try {
@@ -798,7 +806,7 @@ export default function TabOneScreen() {
   };
 
   const fetchMultipleStations = async (latitude: number, longitude: number) => {
-    const delta = 0.4; // adjust how large the area is
+    const delta = 0.5; // mai mare zona
     const token = 'e4124fb6b3a2693bcade167a3f41bd046c076809';
 
     const lat1 = latitude - delta;
@@ -811,15 +819,11 @@ export default function TabOneScreen() {
     try {
       const response = await fetch(url);
       const data = await response.json();
-      if (data.status === 'ok') {
-        setAqiStations(data.data);
-      } else {
-        console.warn('API error:', data.data);
-      }
     } catch (err) {
       console.error('Fetch error:', err);
     }
   };
+
 
   useEffect(() => {
     if (userLocation) {
@@ -931,30 +935,33 @@ export default function TabOneScreen() {
               longitudeDelta: 0.11,
             }}
           >
-            <UrlTile
-              urlTemplate="https://tiles.aqicn.org/tiles/usepa-aqi/{z}/{x}/{y}.png?token=e4124fb6b3a2693bcade167a3f41bd046c076809"
-              maximumZ={16}
-              flipY={false}
-            />
-            {showAirQualityLayer && aqiStations.map((station) => (
+            {showAirQualityLayer && (
+              <UrlTile
+                urlTemplate="https://tiles.aqicn.org/tiles/usepa-aqi/{z}/{x}/{y}.png?token=e4124fb6b3a2693bcade167a3f41bd046c076809"
+                maximumZ={16}
+                flipY={false}
+                tileSize={256}
+                zIndex={0}
+              />
+            )}
+            {aqiStations.map(station => (
               <Marker
-                key={`aqi-${station.uid}`}
-                coordinate={{
-                  latitude: station.lat,
-                  longitude: station.lon,
-                }}
-                title={`AQI: ${station.aqi}`}
-                description={station.station.name}
+                key={station.uid}
+                coordinate={{ latitude: station.lat, longitude: station.lon }}
+                title={`AQI: ${station.aqi}, `}
+                description={`AQI: ${station.aqi}, ${station.station.name}`}
                 pinColor={getAqiColor(Number(station.aqi))}
+                image={require('../../../assets/images/transparent.png')}
               />
             ))}
+
             {showAirQualityLayer && (
               <UrlTile
                 urlTemplate={`https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_PLACES_LEGACY}`}
                 maximumZ={16}
                 flipY={false}
                 tileSize={256}
-                zIndex={0}
+                zIndex={-1}
               />
             )}
 
