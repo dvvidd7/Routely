@@ -83,6 +83,7 @@ export default function TabOneScreen() {
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [showMic, setShowMic] = useState<boolean>(true);
   const mapRef = useRef<MapView>(null);
+  const [midWaypoint, setMidWaypoint] = useState<{ lat: number; lng: number } | null>(null);
 
   type AQIStation = {
     uid: string | number;
@@ -90,7 +91,7 @@ export default function TabOneScreen() {
     lon: number;
     aqi: number | string;
     station: { name: string };
-    dominentpol?: string; 
+    dominentpol?: string;
   };
   const [aqiStations, setAqiStations] = useState<AQIStation[]>([]);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
@@ -135,7 +136,7 @@ export default function TabOneScreen() {
   const openTransportModal = () => {
     setTransportModalVisible(true);
     setSearchVisible(false);
-    setShowMic(false);setShowCloud(false);
+    setShowMic(false); setShowCloud(false);
   };
   const handleRouteIndexIncrease = () => {
     if (routeStops.length - 1 <= routeIndex) return console.warn("Reached end of stations!");
@@ -190,8 +191,7 @@ export default function TabOneScreen() {
   };
   const handleRecentSearchPress = () => {
     setIsFocused(false);
-    openTransportModal();
-    setRouteVisible(true);
+    handleSearch();
     setTransportModalVisible(true);
     if (!destination || !userLocation) return;
 
@@ -256,10 +256,10 @@ export default function TabOneScreen() {
       }
     });
   };
-  useEffect(()=>{
-    if(!micAverage) return;
-    if(micAverage > -20){
-        handleSelectHazard({id: 5, icon: '🎤', label: 'Noise Pollution'})
+  useEffect(() => {
+    if (!micAverage) return;
+    if (micAverage > -20) {
+      handleSelectHazard({ id: 5, icon: '🎤', label: 'Noise Pollution' })
     }
   }, [micAverage])
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -657,6 +657,17 @@ export default function TabOneScreen() {
         }));
 
         setRouteStops(routeStations);
+        const { isSafe, hazardCount, highAqiCount } = isRouteSafe(routeStations, hazardMarkers, aqiStations);
+
+        if (!isSafe) {
+          Alert.alert(
+            "Unsafe Route",
+            `There are ${hazardCount} hazards and ${highAqiCount} high AQI areas along your route. Please select a different route.`
+          );
+          return;
+        }
+        openTransportModal();
+        setRouteVisible(true);
       } catch (error) {
         console.error("Error fetching transit route:", error);
         setRouteStops([]);
@@ -866,6 +877,7 @@ export default function TabOneScreen() {
     closeTransportModal();
     setSearchVisible(true);
     setStationVisible(false);
+    setMidWaypoint(null);
 
     // Reset search bar input
     if (searchRef.current) {
@@ -875,19 +887,92 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
-  const handleSearch = () => {
+  const handleSearch = async () => {
+    let { isSafe, hazardCount, highAqiCount } = isRouteSafe(routeStops, hazardMarkers, aqiStations);
+
+    if (!isSafe) {
+      let rerouteAttempts = 0;
+      let rerouted = false;
+      let newMid = midWaypoint;
+
+      while (!isSafe && rerouteAttempts < 5) {
+        if (userLocation && destination?.location) {
+          // Generate a new middle point with random offset
+          const lat1 = userLocation.latitude;
+          const lng1 = userLocation.longitude;
+          const lat2 = destination.location.lat;
+          const lng2 = destination.location.lng;
+          const midLat = (lat1 + lat2) / 2 + (Math.random() - 0.5) * 0.01;
+          const midLng = (lng1 + lng2) / 2 + (Math.random() - 0.5) * 0.01;
+          newMid = { lat: midLat, lng: midLng };
+          setMidWaypoint(newMid);
+
+          // Fetch new route using the waypoint
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/directions/json?origin=${lat1},${lng1}&destination=${lat2},${lng2}&waypoints=${midLat},${midLng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+          );
+          const data = await response.json();
+
+          // Parse the new route stops
+          const legs = data.routes?.[0]?.legs;
+          if (legs && legs.length > 0) {
+            const steps = legs[0]?.steps ?? [];
+            const routeStations = steps.map((step: any) => ({
+              from: step.start_location ? "Start" : "Unknown stop",
+              to: step.end_location ? "End" : "Unknown stop",
+              fromCoords: {
+                lat: step.start_location?.lat || 0,
+                lng: step.start_location?.lng || 0,
+              },
+              toCoords: {
+                lat: step.end_location?.lat || 0,
+                lng: step.end_location?.lng || 0,
+              },
+              line: step.transit_details?.line?.short_name || step.html_instructions || "N/A",
+              vehicle: step.transit_details?.line?.vehicle?.type || step.travel_mode || "Unknown",
+              departureTime: step.transit_details?.departure_time?.text,
+              arrivalTime: step.transit_details?.arrival_time?.text,
+              headsign: step.transit_details?.headsign || "",
+            }));
+
+            // Check if the new route is safe
+            const check = isRouteSafe(routeStations, hazardMarkers, aqiStations);
+            isSafe = check.isSafe;
+            hazardCount = check.hazardCount;
+            highAqiCount = check.highAqiCount;
+
+            if (isSafe) {
+              setRouteStops(routeStations);
+              rerouted = true;
+              break;
+            }
+          }
+        }
+        rerouteAttempts++;
+      }
+
+      if (!rerouted) {
+        Alert.alert(
+          "Unsafe Route",
+          `All attempted routes have ${hazardCount} hazards and ${highAqiCount} high AQI areas. Please try again later.`
+        );
+        return;
+      }
+      Alert.alert("Route Rerouted", "We found a safer route for you!");
+    }
+
     openTransportModal();
     setRouteVisible(true);
-  }
+  };
   const handleSearchPress = () => {
     setIsFocused(true);
   };
 
   const hideCloudMic = () => {
-    setShowCloud(false);setShowMic(false);
+    setShowCloud(false); setShowMic(false);
   }
   const showCloudMic = () => {
-    setShowCloud(true);setShowMic(true);
+    setShowCloud(true); setShowMic(true);
   }
   function handleBusSelection() {
     if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
@@ -901,8 +986,85 @@ export default function TabOneScreen() {
     setStationVisible(true);
     setBusNavVisible(true);
     hideCloudMic();
-    
+
     setTransportModalVisible(false);
+  }
+  function isRouteSafe(
+    routeStops: Stop[],
+    hazardMarkers: any[],
+    aqiStations: AQIStation[],
+    aqiThreshold = 150,
+    hazardThreshold = 1,
+    sampleIntervalMeters = 1
+  ) {
+    let hazardCount = 0;
+    let highAqiCount = 0;
+
+    // Log input data
+    console.log("Checking route stops:", routeStops);
+    console.log("Hazard markers:", hazardMarkers);
+
+    function interpolatePoints(from: { lat: number; lng: number }, to: { lat: number; lng: number }, interval: number) {
+      const points = [];
+      const distance = getDistanceFromLatLonInMeters(from.lat, from.lng, to.lat, to.lng);
+      const steps = Math.max(1, Math.floor(distance / interval));
+      for (let i = 0; i <= steps; i++) {
+        const lat = from.lat + ((to.lat - from.lat) * i) / steps;
+        const lng = from.lng + ((to.lng - from.lng) * i) / steps;
+        points.push({ lat, lng });
+      }
+      return points;
+    }
+
+    for (const stop of routeStops) {
+      const points = interpolatePoints(stop.fromCoords, stop.toCoords, sampleIntervalMeters);
+
+      for (const point of points) {
+        hazardMarkers.forEach(hazard => {
+          const dist = getDistanceFromLatLonInMeters(
+            point.lat,
+            point.lng,
+            hazard.latitude,
+            hazard.longitude
+          );
+          if (dist < 300) {
+            console.log(`Hazard detected! Point: (${point.lat},${point.lng}) Hazard: (${hazard.latitude},${hazard.longitude}) Distance: ${dist}`);
+          }
+        });
+
+        hazardCount += hazardMarkers.filter(hazard =>
+          getDistanceFromLatLonInMeters(
+            point.lat,
+            point.lng,
+            hazard.latitude,
+            hazard.longitude
+          ) < 300
+        ).length;
+
+        highAqiCount += aqiStations.filter(station =>
+          getDistanceFromLatLonInMeters(
+            point.lat,
+            point.lng,
+            station.lat,
+            station.lon
+          ) < 100 && Number(station.aqi) > aqiThreshold
+        ).length;
+
+        if (hazardCount >= hazardThreshold || highAqiCount > 0) {
+          return {
+            isSafe: false,
+            hazardCount,
+            highAqiCount,
+          };
+        }
+      }
+    }
+
+    return {
+      isSafe: hazardCount < hazardThreshold && highAqiCount === 0,
+      hazardCount,
+      highAqiCount,
+    };
   }
   function getAqiColor(aqi: number) {
     if (aqi <= 50) return 'green';
@@ -993,10 +1155,14 @@ export default function TabOneScreen() {
                   latitude: userLocation.latitude,
                   longitude: userLocation.longitude
                 }}
-                destination={destination.description}
+                destination={{
+                  latitude: destination.location.lat,
+                  longitude: destination.location.lng
+                }}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
                 strokeWidth={5}
                 strokeColor={Colors.light.themeColorDarker}
+                waypoints={midWaypoint ? [{ latitude: midWaypoint.lat, longitude: midWaypoint.lng }] : []}
               />
             )}
             {destination?.location && userLocation && routeVisible && (
@@ -1034,7 +1200,7 @@ export default function TabOneScreen() {
               >
                 <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 65, height: 65 }}
+                  style={{ width: 40, height: 40 }}
 
                 />
               </Marker>
@@ -1051,7 +1217,7 @@ export default function TabOneScreen() {
               >
                 <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 65, height: 65 }}
+                  style={{ width: 40, height: 40 }}
 
                 />
               </Marker>
@@ -1110,7 +1276,7 @@ export default function TabOneScreen() {
                     resizeMode='center'
                   />
                 )}
-                  {hazard.icon === '🎤' && (
+                {hazard.icon === '🎤' && (
                   <Image
                     source={require(`../../../assets/images/loudnoise.png`)}
                     style={{ width: 80, height: 80 }}
@@ -1129,7 +1295,7 @@ export default function TabOneScreen() {
           )}
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); }} />
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); setMidWaypoint(null); }} />
           )}
 
           {/* MY LOCATION BUTTON */}
@@ -1141,19 +1307,19 @@ export default function TabOneScreen() {
           {showMic && (
             <MicButton onAverage={setMicAverage} />
           )}
-          
-      {showCloud && (
-          <TouchableOpacity
-            style={{...styles.cloudButton, backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee',}}
-            onPress={() => setShowAirQualityLayer((prev) => !prev)}
-          >
-            <Feather
-              name="cloud"
-              size={20}
-              color={showAirQualityLayer ? 'white' : '#025ef8'}
-            />
-          </TouchableOpacity>
-      )}
+
+          {showCloud && (
+            <TouchableOpacity
+              style={{ ...styles.cloudButton, backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee', }}
+              onPress={() => setShowAirQualityLayer((prev) => !prev)}
+            >
+              <Feather
+                name="cloud"
+                size={20}
+                color={showAirQualityLayer ? 'white' : '#025ef8'}
+              />
+            </TouchableOpacity>
+          )}
 
 
           {/* FAKE MARKER */}
@@ -1219,10 +1385,8 @@ export default function TabOneScreen() {
                       location: details.geometry.location,
                       description: data.description,
                     }))
-                  setRouteVisible(true);
-                  
-                  openTransportModal();
-                  
+                  handleSearch();
+
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
                 }}
                 query={{
@@ -1353,7 +1517,7 @@ export default function TabOneScreen() {
             <View style={{ ...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <Text style={{ fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25 }}>Confirm destination</Text>
-                <TouchableOpacity onPress={() => { setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false); }}>
+                <TouchableOpacity onPress={() => { setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false); hideCloudMic(); }}>
                   <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
                 </TouchableOpacity>
               </View>
@@ -1573,13 +1737,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
 
-  cloudButton:{
-      position: 'absolute',
-      top: 180,
-      right: 20,
-      zIndex: 100,
-      padding: 10,
-      borderRadius: 60,
+  cloudButton: {
+    position: 'absolute',
+    top: 180,
+    right: 20,
+    zIndex: 100,
+    padding: 10,
+    borderRadius: 60,
   },
   HazardButton: {
     position: "absolute",
