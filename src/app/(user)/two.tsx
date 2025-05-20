@@ -230,10 +230,20 @@ export default function TabTwoScreen() {
       contentContainerStyle={{ paddingBottom: 100 }}
       style={{ flex: 1, backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }}
     >
+      <View style={{flexDirection: 'row', justifyContent: 'space-between', alignContent: 'center', alignItems: 'center'}}>
+        <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
+          Account
+        </Text>
 
-      <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
-        Account
-      </Text>
+        <View style={styles.adminPage}>
+          <TouchableOpacity onPress={() => router.push('(admin)')}>
+            <Text style={styles.adminText}>Go to admin page</Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
+
+
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable style={{ ...styles.viewLeader, backgroundColor: '#025ef8',}} onPress={() => setModalVisible(true)}>
@@ -307,13 +317,13 @@ export default function TabTwoScreen() {
       </View>
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-        {isAdmin && (
+        {/* {isAdmin && (
           <View style={styles.adminPage}>
             <TouchableOpacity onPress={() => router.push('(admin)')}>
               <Text style={styles.adminText}>Go to admin page</Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
 
         {/* Username and Email Section */}
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
@@ -424,16 +434,21 @@ const styles = StyleSheet.create({
   },
   adminPage: {
     backgroundColor: '#025ef8',
+    top: 20,
+    right: 10,
     width: '30%',
-    borderRadius: 2,
-    padding: 8,
-    bottom: 317,
-    left: 120,
+    height: 40,
+    borderRadius: 5,
+    // padding: 8,
+    // bottom: 317,
+    // left: 120,
     alignItems: 'center',
+    justifyContent: 'center'
   },
   adminText: {
     fontWeight: '500',
-    fontSize: 10,
+    fontSize: 15,
+    color: 'black'
   },
   text: {
     fontSize: 40,

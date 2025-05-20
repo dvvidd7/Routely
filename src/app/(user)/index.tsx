@@ -241,9 +241,9 @@ export default function TabOneScreen() {
               return;
             }
             if (distance > 50) { // Threshold for movement (10 meters)
-              // console.log('User moved:', distance, 'meters');
+              //console.log('User moved:', distance, 'meters');
               // console.warn(previousLocation, ' + ', latitude, longitude );
-              console.warn(distance);
+              //console.warn(distance);
             }
             //else return;
           }
@@ -813,7 +813,10 @@ export default function TabOneScreen() {
               if(displayMarker){
                 setFakeMarkerShadow(true);
                 setPinOrigin(region);
-                getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
+                setTimeout(() => {  
+                  
+                  getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
+                }, 500);
               }
             }}
             onRegionChangeComplete={() => setFakeMarkerShadow(false)}
@@ -1008,24 +1011,24 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
-                renderRightButton ={() => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDisplayMarker(true);
-                      setIsFocused(false);
-                      setPinpointModalVisible(true);
-                      setSearchVisible(false);
-                    }}
-                    style={{
-                      height: 60,
-                      justifyContent: 'center',
-                      alignItems: 'flex-end',
-                      left: '4%',
-                    }}
-                  >
-                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
-                  </TouchableOpacity>
-                  )}
+                // renderRightButton ={() => (
+                //   <TouchableOpacity
+                //     onPress={() => {
+                //       setDisplayMarker(true);
+                //       setIsFocused(false);
+                //       setPinpointModalVisible(true);
+                //       setSearchVisible(false);
+                //     }}
+                //     style={{
+                //       height: 60,
+                //       justifyContent: 'center',
+                //       alignItems: 'flex-end',
+                //       left: '4%',
+                //     }}
+                //   >
+                //       <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
+                //   </TouchableOpacity>
+                //   )}
                 onPress={(data, details = null) => {
                   // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
@@ -1091,8 +1094,28 @@ export default function TabOneScreen() {
                   ItemSeparatorComponent={() => <Divider />}
                 />
               )}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setDisplayMarker(true);
+                      setIsFocused(false);
+                      setPinpointModalVisible(true);
+                      setSearchVisible(false);
+                    }}
+                    style={{
+                      height: 60,
+                      justifyContent: 'center',
+                      alignItems: 'flex-end',
+                      right: 50,
+                      top: 90,
+                      position: 'absolute',
+                      zIndex: 500
+                    }}
+                  >
+                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
+                  </TouchableOpacity>
             </View>
           </Modal>
+
 
           {/* Hazard Selection Modal */}
           <Modal
@@ -1130,7 +1153,7 @@ export default function TabOneScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity style={{...styles.cancelButton, top: Platform.OS === 'android' ? 8 : -80}} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -1297,7 +1320,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    top: 8
   },
   optionText: {
     fontSize: 16,
@@ -1541,12 +1563,3 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
 });
-
-function setRideInfo(arg0: {
-  Bus: { price: number; time: number; }; Uber: { price: string; time: number; }; RealTime: {
-    googleDuration: number; // Actual Google-estimated travel time
-    distance: number;
-  };
-}) {
-  throw new Error('Function not implemented.');
-}
