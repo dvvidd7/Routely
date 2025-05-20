@@ -81,8 +81,11 @@ export default function TabOneScreen() {
   const { transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
+  const [showCarXButton, setShowCarXButton] = useState(false);
   const [showMic, setShowMic] = useState<boolean>(true);
-const [routePolyline, setRoutePolyline] = useState<{latitude: number, longitude: number}[]>([]);  const mapRef = useRef<MapView>(null);
+  const [routePolyline, setRoutePolyline] = useState<{ latitude: number, longitude: number }[]>([]);
+  const [drivingRoute, setDrivingRoute] = useState<{ latitude: number, longitude: number }[]>([]);
+  const mapRef = useRef<MapView>(null);
 
   type AQIStation = {
     uid: string | number;
@@ -159,25 +162,25 @@ const [routePolyline, setRoutePolyline] = useState<{latitude: number, longitude:
       )
     );
   }
-useEffect(() => {
-  const checkRoute = async () => {
-    if (routePolyline.length > 0 && hazardMarkers.length > 0) {
-      const hazardsAlongRoute = hazardsNearPolyline(routePolyline, hazardMarkers, 100);
-      if (hazardsAlongRoute.length > 0) {
-        Alert.alert(
-          "Warning",
-          `There are ${hazardsAlongRoute.length} hazards reported along your route!`
-        );
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&alternatives=true&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
-        );
-        const data = await response.json();
-        console.warn(data);
-      }
-    }
-  }
-  checkRoute();
-}, [routePolyline, hazardMarkers]);
+  // useEffect(() => {
+  //   const checkRoute = async () => {
+  //     if (routePolyline.length > 0 && hazardMarkers.length > 0) {
+  //       const hazardsAlongRoute = hazardsNearPolyline(routePolyline, hazardMarkers, 100);
+  //       if (hazardsAlongRoute.length > 0) {
+  //         Alert.alert(
+  //           "Warning",
+  //           `There are ${hazardsAlongRoute.length} hazards reported along your route!`
+  //         );
+  //         const response = await fetch(
+  //           `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&alternatives=true&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+  //         );
+  //         const data = await response.json();
+  //         console.warn(data);
+  //       }
+  //     }
+  //   }
+  //   checkRoute();
+  // }, [routePolyline, hazardMarkers]);
   const closeTransportModal = () => {
     setTransportModalVisible(false);
     setSearchVisible(true);
@@ -626,23 +629,19 @@ useEffect(() => {
       });
     }, 200);
 
-    const fetchTransitRoute = async () => {
+    const fetchTransitRoute = async (isReroute = false) => {
       try {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
         );
         const data = await response.json();
 
-        // console.log("API Response:", data); // Log the API response for debugging
-
-        // Check if the response contains routes
         if (!data.routes || data.routes.length === 0) {
           console.warn("No transit routes found.");
           setRouteStops([]);
           return;
         }
 
-        // Safely access legs
         const legs = data.routes[0]?.legs;
         if (!legs || legs.length === 0) {
           console.warn("No legs found in the route.");
@@ -650,25 +649,18 @@ useEffect(() => {
           return;
         }
 
-        // Safely access steps with fallback to empty array
-        const steps = legs?.[0]?.steps ?? [];
+        const steps = legs[0]?.steps ?? [];
         if (steps.length === 0) {
           console.warn("No steps found in the route.");
           setRouteStops([]);
           return;
         }
 
-        // Log travel modes to help debug
-        // console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
-
-        // Filter transit steps (case-insensitive, and ensure transit_details exists)
-        if (!steps) return [];
         const transitSteps = steps.filter(
           (step: any) =>
             step?.travel_mode?.toUpperCase() === "TRANSIT" && step?.transit_details
         );
 
-        // Map transit steps to route stops
         const routeStations = transitSteps.map((step: any) => ({
           from: step.transit_details?.departure_stop?.name || "Unknown stop",
           to: step.transit_details?.arrival_stop?.name || "Unknown stop",
@@ -688,15 +680,35 @@ useEffect(() => {
         }));
 
         setRouteStops(routeStations);
+
         const { isSafe, hazardCount, highAqiCount } = isRouteSafe(routeStations, hazardMarkers, aqiStations);
 
-        if (!isSafe) {
+        if (!isSafe && !isReroute) {
           Alert.alert(
             "Unsafe Route",
-            `There are ${hazardCount} hazards and ${highAqiCount} high AQI areas along your route. Please select a different route.`
+            `There are ${hazardCount} hazards and ${highAqiCount} high AQI areas along your route. Would you like to be rerouted?`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => {
+                  setRouteStops([]);
+                },
+              },
+              {
+                text: "Reroute",
+                style: "destructive",
+                onPress: () => {
+                  // Optionally: modify destination slightly to trigger alternate route
+                  fetchTransitRoute(true); // Retry with reroute flag
+                },
+              },
+            ],
+            { cancelable: false }
           );
           return;
         }
+
         openTransportModal();
         setRouteVisible(true);
       } catch (error) {
@@ -706,7 +718,8 @@ useEffect(() => {
     };
 
     fetchTransitRoute();
-  }, [destination])
+  }, [destination]);
+
   const timeToMinutes = (timeStr: string | undefined) => {
     if (!timeStr) return undefined;
     const [time, modifier] = timeStr.toLowerCase().split(/(am|pm)/);
@@ -1016,12 +1029,121 @@ useEffect(() => {
 
     setTransportModalVisible(false);
   }
+  function decodePolyline(encoded: string) {
+    let points = [];
+    let index = 0, lat = 0, lng = 0;
+
+    while (index < encoded.length) {
+      let b, shift = 0, result = 0;
+
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlat = (result & 1) ? ~(result >> 1) : result >> 1;
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlng = (result & 1) ? ~(result >> 1) : result >> 1;
+      lng += dlng;
+
+      points.push({
+        latitude: lat / 1e5,
+        longitude: lng / 1e5,
+      });
+    }
+
+    return points;
+  }
+
+  async function handlePersonalCarSelection() {
+    setRouteVisible(true);
+    setRouteIndex(0);
+    hideCloudMic();
+    setTransportModalVisible(false);
+    setShowCarXButton(true);
+
+    if (!userLocation || !destination) return;
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+      );
+      const data = await response.json();
+
+      if (!data.routes || data.routes.length === 0) {
+        console.warn("No driving route found.");
+        setRouteStops([]);
+        return;
+      }
+
+      const polylinePoints = data.routes[0].overview_polyline?.points;
+      if (!polylinePoints) {
+        console.warn("No polyline available.");
+        return;
+      }
+
+      const decodedPath = decodePolyline(polylinePoints);
+
+      // Check for hazards along the route
+      const hazardsAlongRoute = hazardsNearPolyline(decodedPath, hazardMarkers, 100); // 100 meters threshold
+      if (hazardsAlongRoute.length > 0) {
+        Alert.alert(
+          "Warning",
+          `There are ${hazardsAlongRoute.length} hazards reported along your route!`
+        );
+        // Optionally: Try to reroute here by changing the destination slightly and refetching
+        // return; // Uncomment if you want to block the route
+      }
+
+      setDrivingRoute(decodedPath); // Draw route on the map
+      setRouteVisible(true);
+    } catch (error) {
+      console.error("Error fetching driving route:", error);
+    }
+    mapRef.current?.animateCamera({
+      center: {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+      },
+      zoom: 19,
+      pitch: 45,
+      heading: 0,
+    }, { duration: 1000 });
+  }
+
+  async function cancelNavigation() {
+    setRouteVisible(false);
+    setDrivingRoute([]);
+    setRouteStops([]);
+    setRouteIndex(0);
+    showCloudMic();
+    setSearchVisible(true);
+    setShowCarXButton(false);
+
+    // Optionally: zoom back out or fit to original markers
+    mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+      edgePadding: { top: 60, bottom: 60, left: 60, right: 60 },
+      animated: true,
+    });
+  }
+
   function isRouteSafe(
     routeStops: Stop[],
     hazardMarkers: any[],
     aqiStations: AQIStation[],
     aqiThreshold = 150,
-    hazardThreshold = 1,
+    hazardThreshold = 10,
     sampleIntervalMeters = 1
   ) {
     let hazardCount = 0;
@@ -1321,7 +1443,7 @@ useEffect(() => {
           )}
           {/* BUS NAVIGATION */}
           {routeStops.length > 0 && busNavVisible && (
-            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true);}} />
+            <BusNavigation multiple={multipleStations} onDecrease={handleRouteIndexDecrease} onIncrease={handleRouteIndexIncrease} station={routeStops} routeIndex={routeIndex} onCancel={() => { setBusNavVisible(false); setTransportModalVisible(true); setStationVisible(false); setRouteVisible(true); }} />
           )}
 
           {/* MY LOCATION BUTTON */}
@@ -1372,6 +1494,18 @@ useEffect(() => {
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
 
+          {/* X button */}
+          {showCarXButton && (
+            <TouchableOpacity
+              style={[
+                styles.XButton,
+                { backgroundColor: dark ? "black" : "white" }
+              ]}
+              onPress={() => cancelNavigation()}
+            >
+              <Feather name="x" size={24} color="red" />
+            </TouchableOpacity>
+          )}
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
@@ -1602,7 +1736,10 @@ useEffect(() => {
                 }}
               >
                 <View style={styles.rideDetails}>
-                  <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>
+                  <Image
+                    source={require('../../../assets/images/UberLogo.png')}
+                    style={{ width: 40, height: 40, marginRight: 10 }}
+                  />
                   <View>
                     <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Uber</Text>
                     <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
@@ -1613,6 +1750,22 @@ useEffect(() => {
                 <Text style={[styles.ridePrice, { color: dark ? "white" : "black" }]}>
                   {rideInfo?.Uber?.price ?? "N/A"} RON
                 </Text>
+              </TouchableOpacity>
+
+              {/* Personal Car Option */}
+              <TouchableOpacity
+                style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+                onPress={() => handlePersonalCarSelection()}
+              >
+                <View style={styles.rideDetails}>
+                  <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>
+                  <View>
+                    <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Car</Text>
+                    <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
+                      Estimated time: {rideInfo?.RealTime?.googleDuration ?? "N/A"} mins
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
 
               {/* Cancel Button */}
@@ -1699,7 +1852,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    bottom: 10
+    bottom: 5
   },
   cancelButtonHazard: {
     backgroundColor: "#ff4d4d",
@@ -1775,6 +1928,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 180,
     left: 35,
+    borderRadius: 60,
+    padding: 20,
+    elevation: 10,
+    shadowOpacity: 5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+  },
+  XButton: {
+    position: "absolute",
+    top: 80,
+    right: 17,
     borderRadius: 60,
     padding: 20,
     elevation: 10,
