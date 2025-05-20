@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { useRoute, useTheme } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -90,7 +90,19 @@ export default function Panel({ navigation }: any) {
           <TouchableOpacity
             style={[styles.row, { backgroundColor: dark ? "#0f0f0f" : "white" }]}
           >
-            <Text style={[styles.iconCell, { color: dark ? colors.text : "black" }]}>{item.icon}</Text>
+            {/* <Text style={[styles.iconCell, { color: dark ? colors.text : "black" }]}>{item.icon}</Text> */}
+            {item.label === "Accident" && (
+                <Image style={styles.iconCell} source={require('../../../assets/images/accidentlogo.png')} />
+            )}
+            {item.label === "Traffic Jam" && (
+                <Image style={styles.iconCell} source={require('../../../assets/images/jam.png')} />
+            )}
+            {item.label === "Ticket Inspectors" && (
+                <Image style={styles.iconCell} source={require('../../../assets/images/inspectorlogo.png')} />
+            )}
+            {item.label === "Roadblock" && (
+                <Image style={styles.iconCell} source={require('../../../assets/images/roadblocklogo.png')} />
+            )}
             <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.label}</Text>
             <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{new Date(item.created_at).toLocaleString()}</Text>
             <Text style={[styles.emailCell, { color: dark ? colors.text : "black" }]}>{item.email}</Text>
@@ -123,7 +135,8 @@ const styles = StyleSheet.create({
   iconCell: {
     flex: 0.2,
     textAlign: "center",
-    fontSize: 20,
+    width: 50,
+    height: 40,
   },
   cell: {
     flex: 0.5,
