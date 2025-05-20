@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Image, StyleSheet, Alert, View, Text, TouchableOpacity, Modal, TextInput, Pressable, ScrollView, FlatList, Touchable, Linking, Platform, ActivityIndicator } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { AntDesign, Feather, FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { setDestination, selectDestination } from "@/slices/navSlice";
 import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
 import MapViewDirections from 'react-native-maps-directions';
+import { fetchAirQualityData } from '../../api/airQuality';
 import { mapDark } from '@/constants/darkMap';
 import { supabase } from '@/lib/supabase';
 import { useCreateSearch, useFetchSearches } from '@/api/recentSearches';
@@ -23,6 +24,8 @@ import { useNotification } from '@/providers/NotificationContext';
 import { Divider } from 'react-native-paper';
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/providers/AuthProvider';
+import { UrlTile } from 'react-native-maps';
+import MicButton from '@/components/MicButton';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -36,6 +39,7 @@ type Region = {
   latitudeDelta: any,
   longitudeDelta: any,
 }
+
 
 type Station = {
   transit_details: { departure_stop: { name: any; location: { lat: any; lng: any; }; }; arrival_stop: { name: any; location: { lat: any; lng: any; }; }; line: { short_name: any; vehicle: { type: any; }; }; departure_time: { text: any; }; arrival_time: { text: any; }; headsign: any; };
@@ -63,20 +67,44 @@ const hazards: Hazard[] = [
   { id: 2, label: "Traffic Jam", icon: "🚦" },
   { id: 3, label: "Roadblock", icon: "🚧" },
   { id: 4, label: "Ticket inspectors", icon: "👮" },
+  { id: 5, label: "Noise Pollution", icon: "🎤" },
 ];
 
 export default function TabOneScreen() {
+  const [showAirQualityLayer, setShowAirQualityLayer] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const { dark } = useTheme();
+  const [co2stations, setco2Stations] = useState([]);
   const [hasPermission, setHasPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const { transportModalVisible, setTransportModalVisible, pinpointModalVisible, setPinpointModalVisible } = useTransportModal();
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [loadingRoute, setLoadingRoute] = useState(false);
+  const [showCarXButton, setShowCarXButton] = useState(false);
+  const [showMic, setShowMic] = useState<boolean>(true);
+  const [routePolyline, setRoutePolyline] = useState<{ latitude: number, longitude: number }[]>([]);
+  const [drivingRoute, setDrivingRoute] = useState<{ latitude: number, longitude: number }[]>([]);
   const mapRef = useRef<MapView>(null);
+
+  type AQIStation = {
+    uid: string | number;
+    lat: number;
+    lon: number;
+    aqi: number | string;
+    station: { name: string };
+    dominentpol?: string;
+  };
+
+  type HazardMarkersType = {
+    created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
+  }
+  const [aqiStations, setAqiStations] = useState<AQIStation[]>([]);
   const searchRef = useRef<GooglePlacesAutocompleteRef | null>(null);
   const dispatch = useDispatch();
+  const [aqiData, setAqiData] = useState<{
+    city: any; aqi: number; dominentpol?: string
+  } | null>(null);
   const destination = useSelector(selectDestination);
   const { data: searches, error: searchError } = useFetchSearches();
   const [estimatedBus, setEstimatedBus] = useState<number | string | null>(null);
@@ -94,11 +122,11 @@ export default function TabOneScreen() {
   const [pinOrigin, setPinOrigin] = useState<Region>();
   const [displayMarker, setDisplayMarker] = useState<boolean>(false);
   const [pinpointDetails, setPinpointDetails] = useState<string>('');
-  const [hazardMarkers, setHazardMarkers] = useState<{
-    created_at: string | number | Date; id: number; latitude: number; longitude: number; label: string; icon: string
-  }[]>([]);
+  const [showCloud, setShowCloud] = useState<boolean>(true);
+  const [hazardMarkers, setHazardMarkers] = useState<HazardMarkersType[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
+  const [micAverage, setMicAverage] = useState<number | null>(null);
   const origin = userLocation
     ? `${userLocation.latitude},${userLocation.longitude}`
     : null; // Fallback to null if userLocation is not available
@@ -108,10 +136,11 @@ export default function TabOneScreen() {
     Uber: { price: string; time: number };
     RealTime: { googleDuration: number; distance: number };
   } | null>(null);
-  
+
   const openTransportModal = () => {
     setTransportModalVisible(true);
     setSearchVisible(false);
+    setShowMic(false); setShowCloud(false);
   };
   const handleRouteIndexIncrease = () => {
     if (routeStops.length - 1 <= routeIndex) return console.warn("Reached end of stations!");
@@ -121,9 +150,42 @@ export default function TabOneScreen() {
     if (routeIndex <= 0) return console.warn("Reached end of stations!");
     setRouteIndex(routeIndex - 1);
   };
+  function hazardsNearPolyline(polyline: any[], hazardMarkers: any[], threshold = 100) {
+    return hazardMarkers.filter((hazard: { latitude: number; longitude: number; }) =>
+      polyline.some((coord: { latitude: number; longitude: number; }) =>
+        getDistanceFromLatLonInMeters(
+          coord.latitude,
+          coord.longitude,
+          hazard.latitude,
+          hazard.longitude
+        ) <= threshold
+      )
+    );
+  }
+  // useEffect(() => {
+  //   const checkRoute = async () => {
+  //     if (routePolyline.length > 0 && hazardMarkers.length > 0) {
+  //       const hazardsAlongRoute = hazardsNearPolyline(routePolyline, hazardMarkers, 100);
+  //       if (hazardsAlongRoute.length > 0) {
+  //         Alert.alert(
+  //           "Warning",
+  //           `There are ${hazardsAlongRoute.length} hazards reported along your route!`
+  //         );
+  //         const response = await fetch(
+  //           `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&alternatives=true&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+  //         );
+  //         const data = await response.json();
+  //         console.warn(data);
+  //       }
+  //     }
+  //   }
+  //   checkRoute();
+  // }, [routePolyline, hazardMarkers]);
   const closeTransportModal = () => {
     setTransportModalVisible(false);
-    setSearchVisible(false);
+    setSearchVisible(true);
+    setShowCloud(true);
+    setShowMic(true);
   };
   const getUserLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
@@ -135,6 +197,13 @@ export default function TabOneScreen() {
     let location = await Location.getCurrentPositionAsync({});
     return location.coords;
   };
+  const AQI_TOKEN = 'e4124fb6b3a2693bcade167a3f41bd046c076809';
+  const lat = userLocation ? userLocation.latitude : INITIAL_REGION.latitude;
+  const lon = userLocation ? userLocation.longitude : INITIAL_REGION.longitude;
+  const delta = 0.1; // adjust for larger/smaller bounding box
+
+  const boundsUrl = `https://api.waqi.info/map/bounds/?latlng=${lat - delta},${lon - delta},${lat + delta},${lon + delta}&token=${AQI_TOKEN}`;
+
 
   const getDistanceFromLatLonInMeters = (
     lat1: number,
@@ -156,7 +225,7 @@ export default function TabOneScreen() {
   };
   const handleRecentSearchPress = () => {
     setIsFocused(false);
-    setRouteVisible(true);
+    handleSearch();
     setTransportModalVisible(true);
     if (!destination || !userLocation) return;
 
@@ -174,7 +243,7 @@ export default function TabOneScreen() {
 
   const awardPoints = async () => {
     if (!userEmail) return;
-    updatePoints({ points: 10 });
+    useUpdatePoints({ points: 10 });
 
     Alert.alert("Bus trip ended", `You earned 10 points`);
     console.log('10 points awarded!');
@@ -186,6 +255,21 @@ export default function TabOneScreen() {
     setSearchVisible(true);
 
     dispatch(setDestination(null))
+  };
+
+  type AirQualityIndex = {
+    aqi: number;
+    category: string;
+    [key: string]: any;
+  };
+
+  type AirQualityInfo = {
+    indexes: AirQualityIndex[];
+    healthRecommendations?: {
+      generalPopulation?: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
   };
 
   const openUber = () => {
@@ -206,7 +290,12 @@ export default function TabOneScreen() {
       }
     });
   };
-
+  useEffect(() => {
+    if (!micAverage) return;
+    if (micAverage > -20) {
+      handleSelectHazard({ id: 5, icon: '🎤', label: 'Noise Pollution' })
+    }
+  }, [micAverage])
   const [previousLocation, setPreviousLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   useEffect(() => {
     const startTracking = async () => {
@@ -227,7 +316,6 @@ export default function TabOneScreen() {
           const { latitude, longitude } = location.coords;
 
           // Update the current location
-
 
           // Compare with the previous location
           if (previousLocation) {
@@ -315,9 +403,10 @@ export default function TabOneScreen() {
         mapRef.current?.fitToSuppliedMarkers(['departure', 'arrival'], {
           edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
         });
-      }, 500); // Delay rendering by 500ms
+      }, 500);
     }
   }, [stationVisible, routeStops]);
+
 
   useEffect(() => {
     if (!userLocation || !destination || !destination.description) return;
@@ -366,7 +455,6 @@ export default function TabOneScreen() {
     };
     getTravelTime();
   }, [userLocation, destination, GOOGLE_MAPS_PLACES_LEGACY]);
-
   useEffect(() => {
     let pointsAwarded = false; // Prevent multiple awards
 
@@ -438,7 +526,7 @@ export default function TabOneScreen() {
 
   {/* POINTS SYSTEM */ }
 
-  const { mutate: updatePoints } = useUpdatePoints();
+  const { mutate: updatePoints } = useUpdatePoints({ points: 0 });
   const { data: points, error } = useGetPoints();
 
   const queryClient = useQueryClient();
@@ -541,23 +629,19 @@ export default function TabOneScreen() {
       });
     }, 200);
 
-    const fetchTransitRoute = async () => {
+    const fetchTransitRoute = async (isReroute = false) => {
       try {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
         );
         const data = await response.json();
 
-        // console.log("API Response:", data); // Log the API response for debugging
-
-        // Check if the response contains routes
         if (!data.routes || data.routes.length === 0) {
           console.warn("No transit routes found.");
           setRouteStops([]);
           return;
         }
 
-        // Safely access legs
         const legs = data.routes[0]?.legs;
         if (!legs || legs.length === 0) {
           console.warn("No legs found in the route.");
@@ -565,25 +649,18 @@ export default function TabOneScreen() {
           return;
         }
 
-        // Safely access steps with fallback to empty array
-        const steps = legs?.[0]?.steps ?? [];
+        const steps = legs[0]?.steps ?? [];
         if (steps.length === 0) {
           console.warn("No steps found in the route.");
           setRouteStops([]);
           return;
         }
 
-        // Log travel modes to help debug
-        // console.log("All travel modes:", steps.map((s: { travel_mode: any; }) => s.travel_mode));
-
-        // Filter transit steps (case-insensitive, and ensure transit_details exists)
-        if (!steps) return [];
         const transitSteps = steps.filter(
           (step: any) =>
             step?.travel_mode?.toUpperCase() === "TRANSIT" && step?.transit_details
         );
 
-        // Map transit steps to route stops
         const routeStations = transitSteps.map((step: any) => ({
           from: step.transit_details?.departure_stop?.name || "Unknown stop",
           to: step.transit_details?.arrival_stop?.name || "Unknown stop",
@@ -603,6 +680,37 @@ export default function TabOneScreen() {
         }));
 
         setRouteStops(routeStations);
+
+        const { isSafe, hazardCount, highAqiCount } = isRouteSafe(routeStations, hazardMarkers, aqiStations);
+
+        if (!isSafe && !isReroute) {
+          Alert.alert(
+            "Unsafe Route",
+            `There are ${hazardCount} hazards and ${highAqiCount} high AQI areas along your route. Would you like to be rerouted?`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => {
+                  setRouteStops([]);
+                },
+              },
+              {
+                text: "Reroute",
+                style: "destructive",
+                onPress: () => {
+                  // Optionally: modify destination slightly to trigger alternate route
+                  fetchTransitRoute(true); // Retry with reroute flag
+                },
+              },
+            ],
+            { cancelable: false }
+          );
+          return;
+        }
+
+        openTransportModal();
+        setRouteVisible(true);
       } catch (error) {
         console.error("Error fetching transit route:", error);
         setRouteStops([]);
@@ -610,7 +718,8 @@ export default function TabOneScreen() {
     };
 
     fetchTransitRoute();
-  }, [destination])
+  }, [destination]);
+
   const timeToMinutes = (timeStr: string | undefined) => {
     if (!timeStr) return undefined;
     const [time, modifier] = timeStr.toLowerCase().split(/(am|pm)/);
@@ -641,6 +750,36 @@ export default function TabOneScreen() {
     else setEstimatedBus('-');
   }, [routeStops]);
 
+  useEffect(() => {
+    if (userLocation?.latitude && userLocation?.longitude) {
+      const fetchMultipleStations = async () => {
+        const delta = 0.5; //marimea ariei
+        const lat1 = userLocation.latitude - delta;
+        const lon1 = userLocation.longitude - delta;
+        const lat2 = userLocation.latitude + delta;
+        const lon2 = userLocation.longitude + delta;
+
+        const url = `https://api.waqi.info/map/bounds/?latlng=${lat1},${lon1},${lat2},${lon2}&token=${AQI_TOKEN}`;
+
+        try {
+          const response = await fetch(url);
+          const json = await response.json();
+
+          if (json.status === 'ok') {
+            setAqiStations(json.data);
+          } else {
+            console.warn('AQI API error:', json.data);
+            setAqiStations([]);
+          }
+        } catch (error) {
+          console.error('Error fetching AQI stations:', error);
+          setAqiStations([]);
+        }
+      };
+
+      fetchMultipleStations();
+    }
+  }, [userLocation]);
 
 
   const handleMyLocationPress = async () => {
@@ -735,6 +874,32 @@ export default function TabOneScreen() {
     }
   };
 
+  const fetchMultipleStations = async (latitude: number, longitude: number) => {
+    const delta = 0.5; // mai mare zona
+    const token = 'e4124fb6b3a2693bcade167a3f41bd046c076809';
+
+    const lat1 = latitude - delta;
+    const lon1 = longitude - delta;
+    const lat2 = latitude + delta;
+    const lon2 = longitude + delta;
+
+    const url = `https://api.waqi.info/map/bounds/?latlng=${lat1},${lon1},${lat2},${lon2}&token=${AQI_TOKEN}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+    } catch (err) {
+      console.error('Fetch error:', err);
+    }
+  };
+
+
+  useEffect(() => {
+    if (userLocation) {
+      fetchMultipleStations(userLocation.latitude, userLocation.longitude);
+    }
+  }, [userLocation]);
+
   const handleConfirmPinpoint = () => {
     dispatch(
       setDestination(
@@ -748,8 +913,8 @@ export default function TabOneScreen() {
       )
     );
     setPinpointModalVisible(false);
-    setDisplayMarker(false); 
-    handleSearch(); 
+    setDisplayMarker(false);
+    handleSearch();
   }
 
   const handleCancelTransportSelection = () => {
@@ -765,15 +930,90 @@ export default function TabOneScreen() {
     // Reset destination in Redux
     dispatch(setDestination(null));
   };
-  const handleSearch = () => {
+  const handleSearch = async () => {
+    let { isSafe, hazardCount, highAqiCount } = isRouteSafe(routeStops, hazardMarkers, aqiStations);
+
+    if (!isSafe) {
+      let rerouteAttempts = 0;
+      let rerouted = false;
+
+      while (!isSafe && rerouteAttempts < 5) {
+        if (userLocation && destination?.location) {
+          // Generate a new middle point with random offset
+          const lat1 = userLocation.latitude;
+          const lng1 = userLocation.longitude;
+          const lat2 = destination.location.lat;
+          const lng2 = destination.location.lng;
+          const midLat = (lat1 + lat2) / 2 + (Math.random() - 0.5) * 0.01;
+          const midLng = (lng1 + lng2) / 2 + (Math.random() - 0.5) * 0.01;
+
+          // Fetch new route using the waypoint
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/directions/json?origin=${lat1},${lng1}&destination=${lat2},${lng2}&waypoints=${midLat},${midLng}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+          );
+          const data = await response.json();
+
+          // Parse the new route stops
+          const legs = data.routes?.[0]?.legs;
+          if (legs && legs.length > 0) {
+            const steps = legs[0]?.steps ?? [];
+            const routeStations = steps.map((step: any) => ({
+              from: step.start_location ? "Start" : "Unknown stop",
+              to: step.end_location ? "End" : "Unknown stop",
+              fromCoords: {
+                lat: step.start_location?.lat || 0,
+                lng: step.start_location?.lng || 0,
+              },
+              toCoords: {
+                lat: step.end_location?.lat || 0,
+                lng: step.end_location?.lng || 0,
+              },
+              line: step.transit_details?.line?.short_name || step.html_instructions || "N/A",
+              vehicle: step.transit_details?.line?.vehicle?.type || step.travel_mode || "Unknown",
+              departureTime: step.transit_details?.departure_time?.text,
+              arrivalTime: step.transit_details?.arrival_time?.text,
+              headsign: step.transit_details?.headsign || "",
+            }));
+
+            // Check if the new route is safe
+            const check = isRouteSafe(routeStations, hazardMarkers, aqiStations);
+            isSafe = check.isSafe;
+            hazardCount = check.hazardCount;
+            highAqiCount = check.highAqiCount;
+
+            if (isSafe) {
+              setRouteStops(routeStations);
+              rerouted = true;
+              break;
+            }
+          }
+        }
+        rerouteAttempts++;
+      }
+
+      if (!rerouted) {
+        Alert.alert(
+          "Unsafe Route",
+          `All attempted routes have ${hazardCount} hazards and ${highAqiCount} high AQI areas. Please try again later.`
+        );
+        return;
+      }
+      Alert.alert("Route Rerouted", "We found a safer route for you!");
+    }
+
     openTransportModal();
     setRouteVisible(true);
-
-  }
+  };
   const handleSearchPress = () => {
     setIsFocused(true);
   };
 
+  const hideCloudMic = () => {
+    setShowCloud(false); setShowMic(false);
+  }
+  const showCloudMic = () => {
+    setShowCloud(true); setShowMic(true);
+  }
   function handleBusSelection() {
     if (routeStops.length === 0) return Alert.alert("Oops!", "No direct public transport routes found!");
     setTimeout(() => {
@@ -785,24 +1025,221 @@ export default function TabOneScreen() {
     setRouteIndex(0);
     setStationVisible(true);
     setBusNavVisible(true);
+    hideCloudMic();
+
     setTransportModalVisible(false);
   }
-  async function getLocationName(lat: number,lng: number){
+  function decodePolyline(encoded: string) {
+    let points = [];
+    let index = 0, lat = 0, lng = 0;
+
+    while (index < encoded.length) {
+      let b, shift = 0, result = 0;
+
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlat = (result & 1) ? ~(result >> 1) : result >> 1;
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlng = (result & 1) ? ~(result >> 1) : result >> 1;
+      lng += dlng;
+
+      points.push({
+        latitude: lat / 1e5,
+        longitude: lng / 1e5,
+      });
+    }
+
+    return points;
+  }
+
+  async function handlePersonalCarSelection() {
+    setRouteVisible(true);
+    setRouteIndex(0);
+    hideCloudMic();
+    setTransportModalVisible(false);
+    setShowCarXButton(true);
+
+    if (!userLocation || !destination) return;
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.location.lat},${destination.location.lng}&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+      );
+      const data = await response.json();
+
+      if (!data.routes || data.routes.length === 0) {
+        console.warn("No driving route found.");
+        setRouteStops([]);
+        return;
+      }
+
+      const polylinePoints = data.routes[0].overview_polyline?.points;
+      if (!polylinePoints) {
+        console.warn("No polyline available.");
+        return;
+      }
+
+      const decodedPath = decodePolyline(polylinePoints);
+
+      // Check for hazards along the route
+      const hazardsAlongRoute = hazardsNearPolyline(decodedPath, hazardMarkers, 100); // 100 meters threshold
+      if (hazardsAlongRoute.length > 0) {
+        Alert.alert(
+          "Warning",
+          `There are ${hazardsAlongRoute.length} hazards reported along your route!`
+        );
+        // Optionally: Try to reroute here by changing the destination slightly and refetching
+        // return; // Uncomment if you want to block the route
+      }
+
+      setDrivingRoute(decodedPath); // Draw route on the map
+      setRouteVisible(true);
+    } catch (error) {
+      console.error("Error fetching driving route:", error);
+    }
+    mapRef.current?.animateCamera({
+      center: {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+      },
+      zoom: 19,
+      pitch: 45,
+      heading: 0,
+    }, { duration: 1000 });
+  }
+
+  async function cancelNavigation() {
+    setRouteVisible(false);
+    setDrivingRoute([]);
+    setRouteStops([]);
+    setRouteIndex(0);
+    showCloudMic();
+    setSearchVisible(true);
+    setShowCarXButton(false);
+
+    // Optionally: zoom back out or fit to original markers
+    mapRef.current?.fitToSuppliedMarkers(['origin', 'destination'], {
+      edgePadding: { top: 60, bottom: 60, left: 60, right: 60 },
+      animated: true,
+    });
+  }
+
+  function isRouteSafe(
+    routeStops: Stop[],
+    hazardMarkers: any[],
+    aqiStations: AQIStation[],
+    aqiThreshold = 150,
+    hazardThreshold = 10,
+    sampleIntervalMeters = 1
+  ) {
+    let hazardCount = 0;
+    let highAqiCount = 0;
+
+    // Log input data
+    console.log("Checking route stops:", routeStops);
+    console.log("Hazard markers:", hazardMarkers);
+
+    function interpolatePoints(from: { lat: number; lng: number }, to: { lat: number; lng: number }, interval: number) {
+      const points = [];
+      const distance = getDistanceFromLatLonInMeters(from.lat, from.lng, to.lat, to.lng);
+      const steps = Math.max(1, Math.floor(distance / interval));
+      for (let i = 0; i <= steps; i++) {
+        const lat = from.lat + ((to.lat - from.lat) * i) / steps;
+        const lng = from.lng + ((to.lng - from.lng) * i) / steps;
+        points.push({ lat, lng });
+      }
+      return points;
+    }
+
+    for (const stop of routeStops) {
+      const points = interpolatePoints(stop.fromCoords, stop.toCoords, sampleIntervalMeters);
+
+      for (const point of points) {
+        hazardMarkers.forEach(hazard => {
+          const dist = getDistanceFromLatLonInMeters(
+            point.lat,
+            point.lng,
+            hazard.latitude,
+            hazard.longitude
+          );
+          if (dist < 300) {
+            console.log(`Hazard detected! Point: (${point.lat},${point.lng}) Hazard: (${hazard.latitude},${hazard.longitude}) Distance: ${dist}`);
+          }
+        });
+
+        hazardCount += hazardMarkers.filter(hazard =>
+          getDistanceFromLatLonInMeters(
+            point.lat,
+            point.lng,
+            hazard.latitude,
+            hazard.longitude
+          ) < 300
+        ).length;
+
+        highAqiCount += aqiStations.filter(station =>
+          getDistanceFromLatLonInMeters(
+            point.lat,
+            point.lng,
+            station.lat,
+            station.lon
+          ) < 100 && Number(station.aqi) > aqiThreshold
+        ).length;
+
+        if (hazardCount >= hazardThreshold || highAqiCount > 0) {
+          return {
+            isSafe: false,
+            hazardCount,
+            highAqiCount,
+          };
+        }
+      }
+    }
+
+    return {
+      isSafe: hazardCount < hazardThreshold && highAqiCount === 0,
+      hazardCount,
+      highAqiCount,
+    };
+  }
+  function getAqiColor(aqi: number) {
+    if (aqi <= 50) return 'green';
+    if (aqi <= 100) return 'yellow';
+    if (aqi <= 150) return 'orange';
+    if (aqi <= 200) return 'red';
+    if (aqi <= 300) return 'purple';
+    return 'maroon';
+  }
+  async function getLocationName(lat: number, lng: number) {
     const apiKey = GOOGLE_MAPS_PLACES_LEGACY;
     const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
     const data = await response.json();
-    if(data.results && data.results.length > 0){
+    if (data.results && data.results.length > 0) {
       return data.results[0].formatted_address;
     }
     return "Unknown location";
   }
-  
+
   return (
     <View style={styles.container}>
       {hasPermission ? (
         <>
 
           <MapView
+            provider="google"
             ref={mapRef}
             style={styles.map}
             customMapStyle={dark ? mapDark : []}
@@ -810,7 +1247,7 @@ export default function TabOneScreen() {
             showsUserLocation={true}
             showsMyLocationButton={false} // Hide the default button
             onRegionChange={(region, details) => {
-              if(displayMarker){
+              if (displayMarker) {
                 setFakeMarkerShadow(true);
                 setPinOrigin(region);
                 setTimeout(() => {  
@@ -829,16 +1266,49 @@ export default function TabOneScreen() {
               longitude: userLocation?.longitude || INITIAL_REGION.longitude,
               // latitudeDelta: 0.0922,
               // longitudeDelta: 0.0421,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
+              latitudeDelta: 0.1,
+              longitudeDelta: 0.11,
             }}
           >
+            {showAirQualityLayer && (
+              <UrlTile
+                urlTemplate="https://tiles.aqicn.org/tiles/usepa-aqi/{z}/{x}/{y}.png?token=e4124fb6b3a2693bcade167a3f41bd046c076809"
+                maximumZ={16}
+                flipY={false}
+                tileSize={256}
+                zIndex={0}
+              />
+            )}
+            {aqiStations.map(station => (
+              <Marker
+                key={station.uid}
+                coordinate={{ latitude: station.lat, longitude: station.lon }}
+                title={`AQI: ${station.aqi}, `}
+                description={`AQI: ${station.aqi}, ${station.station.name}`}
+                pinColor={getAqiColor(Number(station.aqi))}
+                image={require('../../../assets/images/transparent.png')}
+              />
+            ))}
+
+            {showAirQualityLayer && (
+              <UrlTile
+                urlTemplate={`https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_PLACES_LEGACY}`}
+                maximumZ={16}
+                flipY={false}
+                tileSize={256}
+                zIndex={-1}
+              />
+            )}
+
 
             {destination && userLocation?.latitude && userLocation?.longitude && routeVisible && (
               <MapViewDirections
                 origin={{
                   latitude: userLocation.latitude,
                   longitude: userLocation.longitude
+                }}
+                onReady={result => {
+                  setRoutePolyline(result.coordinates);
                 }}
                 destination={destination.description}
                 apikey={GOOGLE_MAPS_PLACES_LEGACY}
@@ -881,7 +1351,7 @@ export default function TabOneScreen() {
               >
                 <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 65, height: 65 }}
+                  style={{ width: 40, height: 40 }}
 
                 />
               </Marker>
@@ -898,7 +1368,7 @@ export default function TabOneScreen() {
               >
                 <Image
                   source={require(`../../../assets/images/busiconPS.png`)}
-                  style={{ width: 65, height: 65 }}
+                  style={{ width: 40, height: 40 }}
 
                 />
               </Marker>
@@ -957,6 +1427,13 @@ export default function TabOneScreen() {
                     resizeMode='center'
                   />
                 )}
+                {hazard.icon === '🎤' && (
+                  <Image
+                    source={require(`../../../assets/images/loudnoise.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
               </Marker>
             ))}
           </MapView>
@@ -977,9 +1454,28 @@ export default function TabOneScreen() {
             <Feather name="navigation" size={20} color="white" />
           </TouchableOpacity>
 
+          {/* MICROPHONE BUTTON */}
+          {showMic && (
+            <MicButton onAverage={setMicAverage} />
+          )}
+
+          {showCloud && (
+            <TouchableOpacity
+              style={{ ...styles.cloudButton, backgroundColor: showAirQualityLayer ? '#025ef8' : '#eee', }}
+              onPress={() => setShowAirQualityLayer((prev) => !prev)}
+            >
+              <Feather
+                name="cloud"
+                size={20}
+                color={showAirQualityLayer ? 'white' : '#025ef8'}
+              />
+            </TouchableOpacity>
+          )}
+
+
           {/* FAKE MARKER */}
           {displayMarker && (
-            <View style={{...styles.fakeMarkerContainer, top: fakeMarkerShadow ? '49%' : '50%'}}>
+            <View style={{ ...styles.fakeMarkerContainer, top: fakeMarkerShadow ? '49%' : '50%' }}>
               {fakeMarkerShadow && (
                 <Image style={styles.fakeMarker} source={require('../../../assets/images/pin2shadow.png')} />
               )}
@@ -1001,6 +1497,18 @@ export default function TabOneScreen() {
             <Feather name="alert-triangle" size={24} color="#eed202" />
           </TouchableOpacity>
 
+          {/* X button */}
+          {showCarXButton && (
+            <TouchableOpacity
+              style={[
+                styles.XButton,
+                { backgroundColor: dark ? "black" : "white" }
+              ]}
+              onPress={() => cancelNavigation()}
+            >
+              <Feather name="x" size={24} color="red" />
+            </TouchableOpacity>
+          )}
 
           {/* Autocomplete Modal */}
           <Modal animationType="fade" transparent={false} visible={isFocused} onRequestClose={() => setIsFocused(false)}>
@@ -1011,24 +1519,27 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
-                // renderRightButton ={() => (
-                //   <TouchableOpacity
-                //     onPress={() => {
-                //       setDisplayMarker(true);
-                //       setIsFocused(false);
-                //       setPinpointModalVisible(true);
-                //       setSearchVisible(false);
-                //     }}
-                //     style={{
-                //       height: 60,
-                //       justifyContent: 'center',
-                //       alignItems: 'flex-end',
-                //       left: '4%',
-                //     }}
-                //   >
-                //       <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
-                //   </TouchableOpacity>
-                //   )}
+                predefinedPlaces={[]}
+                minLength={1}
+                fields='*'
+                renderRightButton={() => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setDisplayMarker(true);
+                      setIsFocused(false);
+                      setPinpointModalVisible(true);
+                      setSearchVisible(false);
+                    }}
+                    style={{
+                      height: 60,
+                      justifyContent: 'center',
+                      alignItems: 'flex-end',
+                      left: '4%',
+                    }}
+                  >
+                    <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
+                  </TouchableOpacity>
+                )}
                 onPress={(data, details = null) => {
                   // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
@@ -1037,9 +1548,8 @@ export default function TabOneScreen() {
                       location: details.geometry.location,
                       description: data.description,
                     }))
-                  setRouteVisible(true);
-                  openTransportModal();
-                  setSearchVisible(false);
+                  handleSearch();
+
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
                 }}
                 query={{
@@ -1062,7 +1572,7 @@ export default function TabOneScreen() {
                     backgroundColor: dark ? 'black' : 'white',
                     zIndex: 999,
                     position: 'absolute',
-                    top: 60,
+                    top: 70,
                     borderRadius: 4,
                   },
                   row: {
@@ -1083,6 +1593,32 @@ export default function TabOneScreen() {
                 }}
                 debounce={300}
                 enablePoweredByContainer={false}
+                autoFillOnNotFound={false}
+                currentLocation={false}
+                currentLocationLabel="Current location"
+                disableScroll={false}
+                enableHighAccuracyLocation={true}
+                filterReverseGeocodingByTypes={[]}
+                GooglePlacesDetailsQuery={{}}
+                GooglePlacesSearchQuery={{
+                  rankby: "distance",
+                  type: "restaurant",
+                }}
+                GoogleReverseGeocodingQuery={{}}
+                isRowScrollable={true}
+                keyboardShouldPersistTaps="always"
+                listHoverColor="#ececec"
+                listUnderlayColor="#c8c7cc"
+                listViewDisplayed="auto"
+                keepResultsAfterBlur={false}
+                numberOfLines={1}
+                onNotFound={() => { }}
+                onTimeout={() => console.warn("google places autocomplete: request timeout")}
+                predefinedPlacesAlwaysVisible={false}
+                suppressDefaultStyles={false}
+                textInputHide={false}
+                timeout={20000}
+                isNewPlacesAPI={false}
               />
               {recentVisible && (
                 <FlatList
@@ -1130,30 +1666,30 @@ export default function TabOneScreen() {
                   Select a Hazard
                 </Text>
                 <View style={styles.hazardGrid}>
-                  {hazards.map((hazard) => (
+                  {hazards.map((hazard) => hazard.id != 5 && (
                     <TouchableOpacity
                       key={hazard.id}
                       style={[styles.hazardOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
                       onPress={() => handleSelectHazard(hazard)}
                     >
-                    {hazard.label === "Traffic Jam" && (
-                      <Image source={require('../../../assets/images/jam.png')} style={styles.hazardLogo} />
-                    )}
-                    {hazard.label === "Roadblock" && (
-                      <Image source={require('../../../assets/images/roadblocklogo.png')} style={styles.hazardLogo} />
-                    )}
-                    {hazard.label === "Ticket inspectors" && (
-                      <Image source={require('../../../assets/images/inspectorlogo.png')} style={styles.hazardLogo} />
-                    )}
-                    {hazard.label === "Accident" && (
-                      <Image source={require('../../../assets/images/accidentlogo.png')} style={styles.hazardLogo} />
-                    )}
+                      {hazard.label === "Traffic Jam" && (
+                        <Image source={require('../../../assets/images/jam.png')} style={styles.hazardLogo} />
+                      )}
+                      {hazard.label === "Roadblock" && (
+                        <Image source={require('../../../assets/images/roadblocklogo.png')} style={styles.hazardLogo} />
+                      )}
+                      {hazard.label === "Ticket inspectors" && (
+                        <Image source={require('../../../assets/images/inspectorlogo.png')} style={styles.hazardLogo} />
+                      )}
+                      {hazard.label === "Accident" && (
+                        <Image source={require('../../../assets/images/accidentlogo.png')} style={styles.hazardLogo} />
+                      )}
                       {/* <Text style={styles.hazardIcon}>{hazard.icon}</Text> */}
                       <Text style={[styles.hazardLabel, { color: dark ? "white" : "black" }]}>{hazard.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TouchableOpacity style={{...styles.cancelButton, top: Platform.OS === 'android' ? 8 : -80}} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity style={styles.cancelButtonHazard} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -1161,17 +1697,17 @@ export default function TabOneScreen() {
           </Modal>
           {/* Pinpoint selection menu */}
           {pinpointModalVisible && (
-            <View style={{...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white'}}>
-                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
-                  <Text style={{fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25}}>Confirm destination</Text>
-                  <TouchableOpacity onPress={() => {setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false);}}>
-                    <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
-                  </TouchableOpacity>
-                </View>
-                  <Text style={{fontWeight: '400', color: dark ? 'white' : 'black', fontSize: 20}}>{pinpointDetails}</Text>
-                  <TouchableOpacity style={styles.confirmButtonPin} onPress={handleConfirmPinpoint}>
-                    <Text style={styles.cancelText}>Confirm</Text>
-                  </TouchableOpacity>
+            <View style={{ ...styles.pinPointMenu, backgroundColor: dark ? 'black' : 'white' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontWeight: '500', color: dark ? 'white' : 'black', fontSize: 25 }}>Confirm destination</Text>
+                <TouchableOpacity onPress={() => { setPinpointModalVisible(false); setSearchVisible(true); setDisplayMarker(false); hideCloudMic(); }}>
+                  <Feather name='x-circle' size={25} color={dark ? 'white' : 'black'} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontWeight: '400', color: dark ? 'white' : 'black', fontSize: 20 }}>{pinpointDetails}</Text>
+              <TouchableOpacity style={styles.confirmButtonPin} onPress={handleConfirmPinpoint}>
+                <Text style={styles.cancelText}>Confirm</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -1223,7 +1759,10 @@ export default function TabOneScreen() {
                 }}
               >
                 <View style={styles.rideDetails}>
-                  <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>
+                  <Image
+                    source={require('../../../assets/images/UberLogo.png')}
+                    style={{ width: 40, height: 40, marginRight: 10 }}
+                  />
                   <View>
                     <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Uber</Text>
                     <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
@@ -1234,6 +1773,22 @@ export default function TabOneScreen() {
                 <Text style={[styles.ridePrice, { color: dark ? "white" : "black" }]}>
                   {rideInfo?.Uber?.price ?? "N/A"} RON
                 </Text>
+              </TouchableOpacity>
+
+              {/* Personal Car Option */}
+              <TouchableOpacity
+                style={[styles.rideOption, { backgroundColor: dark ? "#1c1c1c" : "#f9f9f9" }]}
+                onPress={() => handlePersonalCarSelection()}
+              >
+                <View style={styles.rideDetails}>
+                  <Text style={[styles.rideIcon, { color: dark ? "white" : "black" }]}>🚗</Text>
+                  <View>
+                    <Text style={[styles.rideTitle, { color: dark ? "white" : "black" }]}>Car</Text>
+                    <Text style={[styles.rideSubtitle, { color: dark ? "#ccc" : "#555" }]}>
+                      Estimated time: {rideInfo?.RealTime?.googleDuration ?? "N/A"} mins
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
 
               {/* Cancel Button */}
@@ -1320,6 +1875,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
+    bottom: 5
+  },
+  cancelButtonHazard: {
+    backgroundColor: "#ff4d4d",
+    padding: 15,
+    width: "100%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+    bottom: 70
   },
   optionText: {
     fontSize: 16,
@@ -1373,6 +1938,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
+
+  cloudButton: {
+    position: 'absolute',
+    top: 180,
+    right: 20,
+    zIndex: 100,
+    padding: 10,
+    borderRadius: 60,
+  },
   HazardButton: {
     position: "absolute",
     bottom: 180,
@@ -1384,7 +1958,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 10,
   },
-  
+  XButton: {
+    position: "absolute",
+    top: 80,
+    right: 17,
+    borderRadius: 60,
+    padding: 20,
+    elevation: 10,
+    shadowOpacity: 5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+  },
+
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
@@ -1402,7 +1987,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  hazardLogo:{
+  hazardLogo: {
     width: 60,
     height: 60,
     marginBottom: 10,
@@ -1523,33 +2108,33 @@ const styles = StyleSheet.create({
     elevation: 15,
     shadowRadius: 10,
   },
-  fakeMarker:{
+  fakeMarker: {
     height: 70,
     width: 70,
     zIndex: 501,
   },
-  fakeMarkerContainer:{
+  fakeMarkerContainer: {
     top: '50%',
-    left:'50%',
+    left: '50%',
     marginLeft: -24,
     marginTop: -48,
     zIndex: 50,
     position: 'absolute'
   },
   pinPointMenu: {
-      position: 'absolute',
-      bottom: 40,
-      height: 210,
-      left: 10,
-      right: 10,
-      zIndex: 50,
-      borderRadius: 20,
-      padding: 20,
-      elevation: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8
+    position: 'absolute',
+    bottom: 40,
+    height: 210,
+    left: 10,
+    right: 10,
+    zIndex: 50,
+    borderRadius: 20,
+    padding: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8
   },
   confirmButtonPin: {
     position: 'absolute',

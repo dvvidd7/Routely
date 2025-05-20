@@ -57,7 +57,7 @@ export const useGetPoints = () => {
         },
     });
 };
-export const useUpdatePoints = () => {
+export const useUpdatePoints = (p0: { points: number; }) => {
     const {session} = useAuth();
     const query = useQueryClient();
     return useMutation({
