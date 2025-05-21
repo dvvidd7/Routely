@@ -127,6 +127,7 @@ export default function TabOneScreen() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
   const [micAverage, setMicAverage] = useState<number | null>(null);
+  const {loading, isAdmin, session} = useAuth();
   const origin = userLocation
     ? `${userLocation.latitude},${userLocation.longitude}`
     : null; // Fallback to null if userLocation is not available
@@ -350,8 +351,12 @@ export default function TabOneScreen() {
     startTracking();
   }, [previousLocation]);
   useEffect(() => {
+   
     const fetchUserEmail = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession(); 
+      console.warn("Is admin: " + isAdmin);
+      console.warn("Session: " + session);
+      console.warn("Loading: " + loading);
       if (error) {
         console.error("Error fetching user session:", error);
         return;
@@ -1430,7 +1435,7 @@ export default function TabOneScreen() {
                 {hazard.icon === '🎤' && (
                   <Image
                     source={require(`../../../assets/images/loudnoise.png`)}
-                    style={{ width: 80, height: 80 }}
+                    style={{ width: 70, height: 70 }}
                     resizeMode='center'
                   />
                 )}
@@ -1522,24 +1527,24 @@ export default function TabOneScreen() {
                 predefinedPlaces={[]}
                 minLength={1}
                 fields='*'
-                renderRightButton={() => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDisplayMarker(true);
-                      setIsFocused(false);
-                      setPinpointModalVisible(true);
-                      setSearchVisible(false);
-                    }}
-                    style={{
-                      height: 60,
-                      justifyContent: 'center',
-                      alignItems: 'flex-end',
-                      left: '4%',
-                    }}
-                  >
-                    <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
-                  </TouchableOpacity>
-                )}
+                // renderRightButton={() => (
+                //   <TouchableOpacity
+                //     onPress={() => {
+                //       setDisplayMarker(true);
+                //       setIsFocused(false);
+                //       setPinpointModalVisible(true);
+                //       setSearchVisible(false);
+                //     }}
+                //     style={{
+                //       height: 60,
+                //       justifyContent: 'center',
+                //       alignItems: 'flex-end',
+                //       left: '4%',
+                //     }}
+                //   >
+                //     <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
+                //   </TouchableOpacity>
+                // )}
                 onPress={(data, details = null) => {
                   // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;

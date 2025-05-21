@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const index = () => {
   const {session, loading, isAdmin} = useAuth();
+
   if(loading)
   {
     return<ActivityIndicator/>;
@@ -17,6 +18,7 @@ const index = () => {
     return <Redirect href={'/sign-in'}/>
   }
   if(!isAdmin){
+    
     return <Redirect href={'/(user)'} />
   }
   return (

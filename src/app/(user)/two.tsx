@@ -107,6 +107,7 @@ export default function TabTwoScreen() {
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
+      console.warn(getUser, user?.email);
       if (error) { console.error('Error fetching user: ', error.message); return; }
 
       if (user) {

@@ -74,11 +74,11 @@ function RootLayoutNav() {
                 <NotificationToggleProvider>
                   <NotificationProvider>
                     <Stack>
+                      <Stack.Screen name="index" options={{headerShown: false}} />
                       <Stack.Screen name="(user)" options={{ headerShown: false }} />
                       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                       <Stack.Screen name="(admin)" options={{ headerShown: false }} />
                       <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                      <Stack.Screen name="index" options={{headerShown: false}} />
                     </Stack>
                   </NotificationProvider>
                 </NotificationToggleProvider>

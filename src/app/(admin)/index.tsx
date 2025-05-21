@@ -438,7 +438,7 @@ export default function TabOneScreen() {
 
   {/* POINTS SYSTEM */ }
 
-  const { mutate: updatePoints } = useUpdatePoints();
+  const { mutate: updatePoints } = useUpdatePoints({ points: 0 });
   const { data: points, error } = useGetPoints();
 
   const queryClient = useQueryClient();
@@ -1011,7 +1011,10 @@ export default function TabOneScreen() {
                 placeholder="Where do you want to go?"
                 fetchDetails={true}
                 nearbyPlacesAPI="GooglePlacesSearch"
-                // renderRightButton ={() => (
+                predefinedPlaces={[]}
+                minLength={1}
+                fields='*'
+                // renderRightButton={() => (
                 //   <TouchableOpacity
                 //     onPress={() => {
                 //       setDisplayMarker(true);
@@ -1026,9 +1029,9 @@ export default function TabOneScreen() {
                 //       left: '4%',
                 //     }}
                 //   >
-                //       <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
+                //     <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
                 //   </TouchableOpacity>
-                //   )}
+                // )}
                 onPress={(data, details = null) => {
                   // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
@@ -1037,9 +1040,8 @@ export default function TabOneScreen() {
                       location: details.geometry.location,
                       description: data.description,
                     }))
-                  setRouteVisible(true);
-                  openTransportModal();
-                  setSearchVisible(false);
+                  handleSearch();
+
                   useNewSearch({ latitude: details.geometry.location.lat, longitude: details.geometry.location.lng, searchText: data.description });
                 }}
                 query={{
@@ -1062,7 +1064,7 @@ export default function TabOneScreen() {
                     backgroundColor: dark ? 'black' : 'white',
                     zIndex: 999,
                     position: 'absolute',
-                    top: 60,
+                    top: 70,
                     borderRadius: 4,
                   },
                   row: {
@@ -1083,6 +1085,32 @@ export default function TabOneScreen() {
                 }}
                 debounce={300}
                 enablePoweredByContainer={false}
+                autoFillOnNotFound={false}
+                currentLocation={false}
+                currentLocationLabel="Current location"
+                disableScroll={false}
+                enableHighAccuracyLocation={true}
+                filterReverseGeocodingByTypes={[]}
+                GooglePlacesDetailsQuery={{}}
+                GooglePlacesSearchQuery={{
+                  rankby: "distance",
+                  type: "restaurant",
+                }}
+                GoogleReverseGeocodingQuery={{}}
+                isRowScrollable={true}
+                keyboardShouldPersistTaps="always"
+                listHoverColor="#ececec"
+                listUnderlayColor="#c8c7cc"
+                listViewDisplayed="auto"
+                keepResultsAfterBlur={false}
+                numberOfLines={1}
+                onNotFound={() => { }}
+                onTimeout={() => console.warn("google places autocomplete: request timeout")}
+                predefinedPlacesAlwaysVisible={false}
+                suppressDefaultStyles={false}
+                textInputHide={false}
+                timeout={20000}
+                isNewPlacesAPI={false}
               />
               {recentVisible && (
                 <FlatList

@@ -9,6 +9,7 @@ const AuthLayout: React.FC = () => {
   if (session) {
     return <Redirect href="/" />;
   }
+  
 
   return <Stack />;
 };
