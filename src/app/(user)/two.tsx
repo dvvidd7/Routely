@@ -437,9 +437,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#025ef8',
     top: 20,
     right: 10,
-    width: '30%',
+    width: '34%',
     height: 40,
-    borderRadius: 5,
+    borderRadius: 45,
     // padding: 8,
     // bottom: 317,
     // left: 120,
@@ -447,8 +447,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   adminText: {
-    fontWeight: '500',
-    fontSize: 15,
+    fontWeight: '600',
+    fontSize: 12,
     color: 'black'
   },
   text: {
