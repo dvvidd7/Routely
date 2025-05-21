@@ -1081,10 +1081,10 @@ export default function TabOneScreen() {
       }
 
       if (!rerouted) {
-        Alert.alert(
-          "Unsafe Route",
-          `All attempted routes have ${hazardCount} hazards and ${highAqiCount} high AQI areas. Please try again later.`
-        );
+        // Alert.alert(
+        //   "Unsafe Route",
+        //   `All attempted routes have ${hazardCount} hazards and ${highAqiCount} high AQI areas. Please try again later.`
+        // );
         return;
       }
       Alert.alert("Route Rerouted", "We found a safer route for you!");
@@ -1914,7 +1914,7 @@ export default function TabOneScreen() {
               </TouchableOpacity>
 
               {/* Cancel Button */}
-              <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
+              <TouchableOpacity style={styles.cancelButton2} onPress={handleCancelTransportSelection}>
                 <Text style={styles.cancelText}>❌ Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -1999,6 +1999,15 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     bottom: 5
   },
+  cancelButton2: {
+    backgroundColor: "#ff4d4d",
+    padding: 15,
+    width: "100%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+    bottom: -2
+  },
   cancelButtonHazard: {
     backgroundColor: "#ff4d4d",
     padding: 15,
@@ -2006,7 +2015,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    bottom: 70
+    bottom: 75
   },
   optionText: {
     fontSize: 16,
