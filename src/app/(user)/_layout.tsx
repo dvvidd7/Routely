@@ -20,6 +20,13 @@ const TabLayout = () => {
         initialParams={{ transportModalVisible, setTransportModalVisible }} // Pass the setter function as a param
       />
       <Tabs.Screen
+        name="ai"
+        options={{
+          title: "AI",
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
         name="two"
         options={{
           title: "Account",

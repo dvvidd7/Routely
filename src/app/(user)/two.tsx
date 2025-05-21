@@ -478,6 +478,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5, 
     shadowRadius: 4, 
+    width:"59%"
   },
   modal: {
     flex: 1,
