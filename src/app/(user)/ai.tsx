@@ -4,7 +4,8 @@ import { useTheme } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
-import { useGetPoints } from '@/api/profile'; 
+import { useGetPoints } from '@/api/profile';
+import * as Location from 'expo-location';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
@@ -16,7 +17,7 @@ export default function AI() {
     const destination = useSelector((state: any) => state.nav.destination);
     const [chat, setChat] = useState<{ sender: string; text: string }[]>([]);
     const dispatch = useDispatch();
-    const nextBadgePoints = useSelector((state: any) => state.user?.nextBadgePoints ?? 0);
+    //const nextBadgePoints = useSelector((state: any) => state.user?.nextBadgePoints ?? 0);
     const { data: userPoints = 0, isLoading: pointsLoading, error: pointsError } = useGetPoints();
     const [messages, setMessages] = useState([
         {
@@ -37,7 +38,7 @@ Format:
             flatListRef.current.scrollToEnd({ animated: true });
         }
     }, [chat]);
-    
+
 
     useEffect(() => {
         if (typeof userPoints === 'number') {
@@ -75,15 +76,52 @@ Format:
         return data.results?.[0]?.formatted_address || `${lat},${lng}`;
     };
 
+    type Badge = { name: string; points: number };
+
+    const badges = [
+        { id: 1, name: "Eco Starter", points: 100, image: require('assets/images/100points.png') },
+        { id: 2, name: "Green Commuter", points: 500, image: require('assets/images/500points.png') },
+        { id: 3, name: "Planet Saver", points: 1000, image: require('assets/images/plantLover.png') },
+        { id: 4, name: "Eco Hero", points: 2000, image: require('assets/images/planetLover.png') },
+    ];
+
+
+    const getNextBadgePoints = (userPoints: number) => {
+        const nextBadge = badges
+            .filter((badge: Badge) => badge.points > userPoints)
+            .sort((a: Badge, b: Badge) => a.points - b.points)[0];
+        return nextBadge ? nextBadge.points : null; // or undefined if you prefer
+    };
+
+    const getUserLocation = async () => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            console.error('Permission to access location was denied');
+            return null;
+        }
+
+        let location = await Location.getCurrentPositionAsync({});
+        return location.coords;
+    };
+
+    // Usage:
+    const nextBadgePoints = getNextBadgePoints(userPoints ?? 0);
+
     const handleSend = async () => {
         if (!input.trim()) return;
 
         setLoading(true);
+
+        // Always get the latest location
         let from = "unknown";
         let fromCoords = "";
-        if (userLocation) {
-            fromCoords = `(${userLocation.latitude}, ${userLocation.longitude})`;
-            from = await getAddressFromCoords(userLocation.latitude, userLocation.longitude);
+        let coords = userLocation;
+        if (!coords) {
+            coords = await getUserLocation();
+        }
+        if (coords) {
+            fromCoords = `(${coords.latitude}, ${coords.longitude})`;
+            from = await getAddressFromCoords(coords.latitude, coords.longitude);
         }
 
         const to = destination?.description || "unknown";
@@ -94,25 +132,25 @@ Format:
 
         const contextMessage = {
             role: 'system',
-            content: `You are a helpful travel assistant.
+            content: `You are a helpful travel assistant. Users can get points by using the transit and helping the community by placing hazards.
 You know the user's current location and destination as provided below.
 User is at ${from} ${fromCoords} and wants to go to ${to}.
 Bus: ${busTime} min, $${busPrice}.
 Uber: ${uberTime} min, $${uberPrice}.
-The user currently has ${userPoints} points and needs ${nextBadgePoints - userPoints} more points to reach the next badge (at ${nextBadgePoints} points).`
+The user currently has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - Number(userPoints)} more points to reach the next badge (at ${Number(nextBadgePoints)} points).`
         };
 
         const userMessage = { role: 'user', content: input };
         const updatedMessages = [
             {
                 role: 'system',
-                content: `You are a helpful travel assistant. Provide concise and friendly suggestions based on route, price, and user progress.
+                content: `You are a helpful travel assistant. Provide concise and friendly suggestions based on route, price, and user progress. Users can get points by using the transit and helping the community by placing hazards.
 User is currently at ${from} ${fromCoords}, and going to ${to}.
 Bus: ${busTime} min, $${busPrice}. Uber: ${uberTime} min, $${uberPrice}.
-The user has ${userPoints} points and needs ${nextBadgePoints - userPoints} more to reach the next badge (${nextBadgePoints} points).`
+The user has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - Number(userPoints)} more to reach the next badge (${Number(nextBadgePoints)} points).`
             },
             ...messages.slice(1),
-            { role: 'user', content: input }
+            userMessage
         ];
 
         console.log("Sending messages to GPT:", JSON.stringify(updatedMessages, null, 2));
@@ -194,18 +232,18 @@ const styles = StyleSheet.create({
     userBubble: {
         alignSelf: 'flex-end',
         backgroundColor: '#025ef8',
-        padding: 25,
+        padding: 15,
         marginVertical: 4,
-        borderRadius: 40,
+        borderRadius: 20,
         maxWidth: '80%',
         color: '#fff',
     },
     aiBubble: {
         alignSelf: 'flex-start',
         backgroundColor: '#F0F0F0',
-        padding: 25,
+        padding: 15,
         marginVertical: 4,
-        borderRadius: 40,
+        borderRadius: 20,
         maxWidth: '80%',
     },
 });
