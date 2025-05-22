@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useTheme } from "@react-navigation/native";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { GOOGLE_MAPS_PLACES_LEGACY } from "@env";
+import { useGetPoints } from '@/api/profile'; 
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
 export default function AI() {
@@ -13,6 +15,9 @@ export default function AI() {
     const userLocation = useSelector((state: any) => state.nav.userLocation);
     const destination = useSelector((state: any) => state.nav.destination);
     const [chat, setChat] = useState<{ sender: string; text: string }[]>([]);
+    const dispatch = useDispatch();
+    const nextBadgePoints = useSelector((state: any) => state.user?.nextBadgePoints ?? 0);
+    const { data: userPoints = 0, isLoading: pointsLoading, error: pointsError } = useGetPoints();
     const [messages, setMessages] = useState([
         {
             role: 'system',
@@ -32,6 +37,13 @@ Format:
             flatListRef.current.scrollToEnd({ animated: true });
         }
     }, [chat]);
+    
+
+    useEffect(() => {
+        if (typeof userPoints === 'number') {
+            dispatch({ type: 'SET_USER_POINTS', payload: userPoints });
+        }
+    }, [userPoints]);
 
     const sendToGPT = async (conversation: { role: string; content: string }[]) => {
         try {
@@ -82,15 +94,28 @@ Format:
 
         const contextMessage = {
             role: 'system',
-            content: `You are a helpful travel assistant. 
+            content: `You are a helpful travel assistant.
 You know the user's current location and destination as provided below.
 User is at ${from} ${fromCoords} and wants to go to ${to}.
 Bus: ${busTime} min, $${busPrice}.
-Uber: ${uberTime} min, $${uberPrice}.`
+Uber: ${uberTime} min, $${uberPrice}.
+The user currently has ${userPoints} points and needs ${nextBadgePoints - userPoints} more points to reach the next badge (at ${nextBadgePoints} points).`
         };
 
         const userMessage = { role: 'user', content: input };
-        const updatedMessages = [messages[0], contextMessage, ...messages.slice(1), userMessage];
+        const updatedMessages = [
+            {
+                role: 'system',
+                content: `You are a helpful travel assistant. Provide concise and friendly suggestions based on route, price, and user progress.
+User is currently at ${from} ${fromCoords}, and going to ${to}.
+Bus: ${busTime} min, $${busPrice}. Uber: ${uberTime} min, $${uberPrice}.
+The user has ${userPoints} points and needs ${nextBadgePoints - userPoints} more to reach the next badge (${nextBadgePoints} points).`
+            },
+            ...messages.slice(1),
+            { role: 'user', content: input }
+        ];
+
+        console.log("Sending messages to GPT:", JSON.stringify(updatedMessages, null, 2));
 
         setChat(prev => [...prev, { sender: 'You', text: input }]);
         setMessages(updatedMessages);
