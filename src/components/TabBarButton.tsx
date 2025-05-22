@@ -1,6 +1,6 @@
 import React, { JSX, useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTheme } from '@react-navigation/native';
 
@@ -20,6 +20,7 @@ const TabBarButton: React.FC<TabBarButtonProps> = ({ onPress, onLongPress, isFoc
     index: (props) => <Feather name="home" size={24} {...props} />,
     two: (props) => <Feather name="user" size={24} {...props} />,
     panel: (props) => <Feather name="menu" size={24} {...props} />,
+    ai: (props) => <FontAwesome5 name="robot" size={24} {...props} />,
   };
 
   const IconComponent = icon[routeName]; // Destructure to avoid repeated lookup

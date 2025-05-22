@@ -127,7 +127,7 @@ export default function TabOneScreen() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
   const [micAverage, setMicAverage] = useState<number | null>(null);
-  const {loading, isAdmin, session} = useAuth();
+  const { loading, isAdmin, session } = useAuth();
   const origin = userLocation
     ? `${userLocation.latitude},${userLocation.longitude}`
     : null; // Fallback to null if userLocation is not available
@@ -187,6 +187,11 @@ export default function TabOneScreen() {
     setSearchVisible(true);
     setShowCloud(true);
     setShowMic(true);
+  };
+  const POLLUTION_HAZARD = {
+    id: 6,
+    label: "High Pollution",
+    icon: "🌫️",
   };
   const getUserLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
@@ -351,9 +356,9 @@ export default function TabOneScreen() {
     startTracking();
   }, [previousLocation]);
   useEffect(() => {
-   
+
     const fetchUserEmail = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession(); 
+      const { data: { session }, error } = await supabase.auth.getSession();
       console.warn("Is admin: " + isAdmin);
       console.warn("Session: " + session);
       console.warn("Loading: " + loading);
@@ -384,6 +389,8 @@ export default function TabOneScreen() {
     }
   }, [notification]);
 
+
+
   useEffect(() => {
     (async () => {
       try {
@@ -401,6 +408,43 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!userLocation || !aqiStations.length) return;
+
+    // Set your AQI threshold
+    const AQI_THRESHOLD = 50;
+
+    // Find stations with high AQI near the user (within 500m, adjust as needed)
+    const highAqiStations = aqiStations.filter(station =>
+      Number(station.aqi) > AQI_THRESHOLD &&
+      getDistanceFromLatLonInMeters(
+        userLocation.latitude,
+        userLocation.longitude,
+        station.lat,
+        station.lon
+      ) < 10000
+    );
+
+    if (highAqiStations.length > 0) {
+      // Add a pollution hazard marker for each high AQI station (if not already present)
+      setHazardMarkers(prev => {
+        // Avoid duplicates
+        const pollutionHazards = highAqiStations.map(station => ({
+          id: Number(station.uid) || Date.now() + Math.floor(Math.random() * 1000000),
+          latitude: station.lat,
+          longitude: station.lon,
+          label: "High Pollution",
+          icon: "🌫️",
+          created_at: new Date().toISOString(),
+          image: require('../../../assets/images/highPollution.png')
+        }));
+        // Filter out existing pollution hazards
+        const nonPollution = prev.filter(h => h.label !== "High Pollution");
+        return [...nonPollution, ...pollutionHazards];
+      });
+    }
+  }, [aqiStations, userLocation]);
 
   useEffect(() => {
     if (stationVisible && routeStops.length > 0) {
@@ -1198,34 +1242,11 @@ export default function TabOneScreen() {
           [
             {
               text: "OK",
-              style: "destructive",
+              style: "default",
               onPress: () => {
 
               }
             },
-            {
-              text: "Re-route",
-              onPress: async () => {
-                if (userLocation && destination?.location) {
-                  const detourWaypoints = hazardMarkers.map(h => ({ lat: h.latitude, lng: h.longitude }));
-                  const bestRoute = await rerouteSafely(
-                    userLocation,
-                    destination.location,
-                    detourWaypoints
-                  );
-                  if (bestRoute && bestRoute.length > 0) {
-                    setDrivingRoute(bestRoute);
-                    setRouteVisible(true);
-                    // Optionally update Redux destination here if you want to reflect the new endpoint
-                    // dispatch(setDestination({ location: { lat: bestRoute[bestRoute.length-1].latitude, lng: bestRoute[bestRoute.length-1].longitude }, description: "Rerouted destination" }));
-                  } else {
-                    Alert.alert("Warning", "No safe route found. Try again.");
-                  }
-                }
-              }
-            }
-
-
           ],
           { cancelable: true }
         );
@@ -1377,8 +1398,8 @@ export default function TabOneScreen() {
               if (displayMarker) {
                 setFakeMarkerShadow(true);
                 setPinOrigin(region);
-                setTimeout(() => {  
-                  
+                setTimeout(() => {
+
                   getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
                 }, 500);
               }
@@ -1544,6 +1565,13 @@ export default function TabOneScreen() {
                   <Image
                     source={require(`../../../assets/images/roadblock.png`)}
                     style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.label === 'High Pollution' && (
+                  <Image
+                    source={require('../../../assets/images/highPollution.png')}
+                    style={{ width: 70, height: 70 }}
                     resizeMode='center'
                   />
                 )}
@@ -1757,25 +1785,25 @@ export default function TabOneScreen() {
                   ItemSeparatorComponent={() => <Divider />}
                 />
               )}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDisplayMarker(true);
-                      setIsFocused(false);
-                      setPinpointModalVisible(true);
-                      setSearchVisible(false);
-                    }}
-                    style={{
-                      height: 60,
-                      justifyContent: 'center',
-                      alignItems: 'flex-end',
-                      right: 50,
-                      top: 90,
-                      position: 'absolute',
-                      zIndex: 500
-                    }}
-                  >
-                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
-                  </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setDisplayMarker(true);
+                  setIsFocused(false);
+                  setPinpointModalVisible(true);
+                  setSearchVisible(false);
+                }}
+                style={{
+                  height: 60,
+                  justifyContent: 'center',
+                  alignItems: 'flex-end',
+                  right: 50,
+                  top: 90,
+                  position: 'absolute',
+                  zIndex: 500
+                }}
+              >
+                <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
+              </TouchableOpacity>
             </View>
           </Modal>
 
