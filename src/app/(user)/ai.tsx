@@ -12,13 +12,22 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 export default function AI() {
     const [input, setInput] = useState('');
     const { dark } = useTheme();
-    const rideInfo = useSelector((state: any) => state.nav.rideInfo);
     const userLocation = useSelector((state: any) => state.nav.userLocation);
     const destination = useSelector((state: any) => state.nav.destination);
+    // Define Stop type or replace with a general type if unknown
+    type Stop = { name?: string; latitude?: number; longitude?: number }; // Adjust fields as needed
+    const [routeStops, setRouteStops] = useState<Stop[]>([]);
     const [chat, setChat] = useState<{ sender: string; text: string }[]>([]);
+    const [destinationInput, setDestinationInput] = useState("");
+    const [destinationCoords, setDestinationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
     const dispatch = useDispatch();
     //const nextBadgePoints = useSelector((state: any) => state.user?.nextBadgePoints ?? 0);
     const { data: userPoints = 0, isLoading: pointsLoading, error: pointsError } = useGetPoints();
+    const [rideInfo, setRideInfo] = useState<{
+        Bus: { price: number; time: number };
+        Uber: { price: string; time: number };
+        RealTime: { googleDuration: number; distance: number };
+    } | null>(null);
     const [messages, setMessages] = useState([
         {
             role: 'system',
@@ -26,7 +35,7 @@ export default function AI() {
 Format: 
 - Best option: Bus/Uber
 - Time: [value]
-- Price: [value]
+- Price: [value] in RON not $
 - Additional tip: ...`,
         }
     ]);
@@ -45,6 +54,217 @@ Format:
             dispatch({ type: 'SET_USER_POINTS', payload: userPoints });
         }
     }, [userPoints]);
+
+    useEffect(() => {
+        if (!userLocation || !destination || !destination.description) return;
+
+        const getTravelTime = async () => {
+            try {
+                const origin = `${userLocation.latitude},${userLocation.longitude}`;
+                const encodedDestination = encodeURIComponent(destination.description);
+
+                const response = await fetch(
+                    `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${encodedDestination}&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+                );
+
+                const data = await response.json();
+
+                if (data.routes.length > 0) {
+                    const leg = data.routes[0].legs[0];
+                    const durationMin = Math.ceil(leg.duration.value / 60);
+                    const distanceKm = leg.distance.value / 1000;
+
+                    // Calculate dynamic price
+                    const baseFare = 5;
+                    const costPerKm = 2;
+                    const uberPrice = (baseFare + costPerKm * distanceKm).toFixed(2);
+
+                    setRideInfo({
+                        Bus: {
+                            price: 3,
+                            time: Math.ceil((distanceKm / 20) * 60), // ~20 km/h
+                        },
+                        Uber: {
+                            price: uberPrice,
+                            time: Math.ceil((distanceKm / 40) * 60), // ~40 km/h
+                        },
+                        RealTime: {
+                            googleDuration: durationMin,
+                            distance: distanceKm
+                        }
+                    });
+                } else {
+                    console.warn("No routes found in directions response");
+                }
+            } catch (error) {
+                console.error("Error fetching travel time:", error);
+            }
+        };
+        getTravelTime();
+    }, [userLocation, destination, GOOGLE_MAPS_PLACES_LEGACY]);
+
+    const calculateBusPrice = () => {
+        const numberOfBuses = routeStops.length;
+        return numberOfBuses * 3;
+    };
+
+    // Define RouteStation type to match the structure returned in fetchTransitRoute
+    type RouteStation = {
+        from: string;
+        to: string;
+        fromCoords: { lat: number; lng: number };
+        toCoords: { lat: number; lng: number };
+        line: string;
+        vehicle: string;
+        departureTime?: string;
+        arrivalTime?: string;
+        headsign?: string;
+    };
+
+    const fetchTransitRoute = async (
+        isReroute = false,
+        fromCoords: { latitude: number; longitude: number },
+        toCoords: { latitude: number; longitude: number }
+    ) => {
+        try {
+            const origin = `${fromCoords.latitude},${fromCoords.longitude}`;
+            const destination = `${toCoords.latitude},${toCoords.longitude}`;
+            const response = await fetch(
+                `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&mode=transit&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+            );
+            const data = await response.json();
+
+            if (!data.routes || data.routes.length === 0) {
+                console.warn("No transit routes found.");
+                return [];
+            }
+
+            const legs = data.routes[0]?.legs;
+            const steps = legs?.[0]?.steps ?? [];
+
+            const transitSteps = steps.filter(
+                (step: any) =>
+                    step?.travel_mode?.toUpperCase() === "TRANSIT" && step?.transit_details
+            );
+
+            return transitSteps.map((step: any) => ({
+                from: step.transit_details?.departure_stop?.name || "Unknown stop",
+                to: step.transit_details?.arrival_stop?.name || "Unknown stop",
+                fromCoords: step.transit_details?.departure_stop?.location || { lat: 0, lng: 0 },
+                toCoords: step.transit_details?.arrival_stop?.location || { lat: 0, lng: 0 },
+                line: step.transit_details?.line?.short_name || "N/A",
+                vehicle: step.transit_details?.line?.vehicle?.type || "Transit",
+                departureTime: step.transit_details?.departure_time?.text,
+                arrivalTime: step.transit_details?.arrival_time?.text,
+                headsign: step.transit_details?.headsign || "",
+            }));
+        } catch (error) {
+            console.error("Transit route fetch error:", error);
+            return [];
+        }
+    };
+
+    type TransitStep = {
+        from: string;
+        to: string;
+        fromCoords: { lat: number; lng: number };
+        toCoords: { lat: number; lng: number };
+        line: string;
+        vehicle: string;
+        departureTime?: string;
+        arrivalTime?: string;
+        headsign?: string;
+    };
+
+    const getTransitSummary = (stations: TransitStep[]) => {
+        if (!stations || stations.length === 0) return "No transit route available.";
+
+        // For example: "Take BUS 42 from Stop A to Stop B, then SUBWAY M7 from Stop B to Stop C"
+        return stations.map((step, i) => {
+            return `${step.vehicle.toUpperCase()} ${step.line} from ${step.from} to ${step.to}`;
+        }).join(", then ");
+    };
+
+
+    // Helper to geocode an address string to coordinates using Google Maps API
+    const geocodeAddress = async (address: string) => {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_PLACES_LEGACY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === "OK" && data.results.length > 0) {
+            const { lat, lng } = data.results[0].geometry.location;
+            return { latitude: lat, longitude: lng };
+        }
+        throw new Error("Could not geocode address");
+    };
+
+    // Dummy fetchRideInfo implementation (replace with real API call as needed)
+    const fetchRideInfo = async (
+        from: { latitude: number; longitude: number } | null,
+        to: { latitude: number; longitude: number }
+    ) => {
+        if (!from || !to) return null;
+
+        const origin = `${from.latitude},${from.longitude}`;
+        const destination = `${to.latitude},${to.longitude}`;
+        const response = await fetch(
+            `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+        );
+        const data = await response.json();
+
+        if (data.routes.length > 0) {
+            const leg = data.routes[0].legs[0];
+            const durationMin = Math.ceil(leg.duration.value / 60);
+            const distanceKm = leg.distance.value / 1000;
+
+            // Calculate dynamic price
+            const baseFare = 5;
+            const costPerKm = 2;
+            const uberPrice = (baseFare + costPerKm * distanceKm).toFixed(2);
+
+            return {
+                Bus: {
+                    price: 3,
+                    time: Math.ceil((distanceKm / 20) * 60), // ~20 km/h
+                },
+                Uber: {
+                    price: uberPrice,
+                    time: Math.ceil((distanceKm / 40) * 60), // ~40 km/h
+                },
+                RealTime: {
+                    googleDuration: durationMin,
+                    distance: distanceKm
+                }
+            };
+        } else {
+            throw new Error("No routes found in directions response");
+        }
+    };
+
+    const handleDestinationSubmit = async () => {
+        try {
+            console.log("📍 Submitting destination:", destinationInput);
+            const coords = await geocodeAddress(destinationInput);
+            console.log("📍 Geocoded coords:", coords);
+            setDestinationCoords(coords);
+
+            const ride = await fetchRideInfo(userLocation, coords);
+            console.log("🚗 Ride info:", ride);
+            setRideInfo(ride);
+
+            await sendToGPT([
+                {
+                    role: 'user',
+                    content: `What's the best way to get to ${destinationInput}?`
+                }
+            ]);
+        } catch (error) {
+            console.error("❌ Error in handleDestinationSubmit:", error);
+            setLoading(false);
+        }
+    };
+
+
 
     const sendToGPT = async (conversation: { role: string; content: string }[]) => {
         try {
@@ -107,83 +327,227 @@ Format:
     // Usage:
     const nextBadgePoints = getNextBadgePoints(userPoints ?? 0);
 
+
     const handleSend = async () => {
         if (!input.trim()) return;
-
         setLoading(true);
 
-        // Always get the latest location
-        let from = "unknown";
-        let fromCoords = "";
         let coords = userLocation;
-        if (!coords) {
-            coords = await getUserLocation();
+        if (!coords) coords = await getUserLocation();
+
+        // Detectăm dacă e o întrebare / mesaj general de chat, nu o destinație
+        const isGeneralChat =
+            input.toLowerCase().startsWith("how") ||
+            input.toLowerCase().startsWith("what") ||
+            input.toLowerCase().startsWith("where") ||
+            input.toLowerCase().startsWith("can") ||
+            input.toLowerCase().startsWith("do") ||
+            input.includes("?");
+
+        if (isGeneralChat) {
+            // Mesaj conversațional, fără rută
+            const from = coords ? await getAddressFromCoords(coords.latitude, coords.longitude) : "unknown";
+            const fromCoords = coords ? `(${coords.latitude}, ${coords.longitude})` : "";
+
+            const contextMessage = {
+                role: "system",
+                content: `You are a helpful travel assistant. The user is currently at ${from} ${fromCoords}. Answer clearly and concisely.`,
+            };
+
+            const userMessage = { role: "user", content: input };
+            const updatedMessages = [contextMessage, userMessage];
+
+            setChat((prev) => [...prev, { sender: "You", text: input }]);
+            setMessages(updatedMessages);
+            setInput("");
+
+            const reply = await sendToGPT(updatedMessages);
+            setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+            setChat((prev) => [...prev, { sender: "Routely", text: reply }]);
+            setLoading(false);
+            return;
         }
-        if (coords) {
-            fromCoords = `(${coords.latitude}, ${coords.longitude})`;
-            from = await getAddressFromCoords(coords.latitude, coords.longitude);
-        }
 
-        const to = destination?.description || "unknown";
-        const busTime = rideInfo?.Bus?.time ?? "N/A";
-        const busPrice = rideInfo?.Bus?.price ?? "N/A";
-        const uberTime = rideInfo?.Uber?.time ?? "N/A";
-        const uberPrice = rideInfo?.Uber?.price ?? "N/A";
+        // Dacă nu e mesaj conversațional, tratăm input-ul ca destinație
+        let to = destination?.description || "unknown";
+        let toCoords = destinationCoords;
 
-        const contextMessage = {
-            role: 'system',
-            content: `You are a helpful travel assistant. Users can get points by using the transit and helping the community by placing hazards.
-You know the user's current location and destination as provided below.
-User is at ${from} ${fromCoords} and wants to go to ${to}.
-Bus: ${busTime} min, $${busPrice}.
-Uber: ${uberTime} min, $${uberPrice}.
-The user currently has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - Number(userPoints)} more points to reach the next badge (at ${Number(nextBadgePoints)} points).`
-        };
-
-        const userMessage = { role: 'user', content: input };
-        const updatedMessages = [
-            {
-                role: 'system',
-                content: `You are a helpful travel assistant. Provide concise and friendly suggestions based on route, price, and user progress. Users can get points by using the transit and helping the community by placing hazards.
-User is currently at ${from} ${fromCoords}, and going to ${to}.
-Bus: ${busTime} min, $${busPrice}. Uber: ${uberTime} min, $${uberPrice}.
-The user has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - Number(userPoints)} more to reach the next badge (${Number(nextBadgePoints)} points).`
-            },
-            ...messages.slice(1),
-            userMessage
+        // 🔍 Detectăm dacă input-ul conține un pattern de destinație
+        const destinationPatterns = [
+            /^to\s+(.+)/i,
+            /^i want to go to\s+(.+)/i,
+            /^take me to\s+(.+)/i,
+            /^navigate to\s+(.+)/i,
         ];
 
-        console.log("Sending messages to GPT:", JSON.stringify(updatedMessages, null, 2));
+        let matchedAddress: string | null = null;
+        for (const pattern of destinationPatterns) {
+            const match = input.match(pattern);
+            if (match) {
+                matchedAddress = match[1].trim();
+                break;
+            }
+        }
 
-        setChat(prev => [...prev, { sender: 'You', text: input }]);
+        // fallback: dacă nu se potrivește pattern și nu e întrebare, tratăm tot ca destinație
+        // Only treat as destination if it matches a pattern
+        // Otherwise, treat as general chat
+        if (!matchedAddress) {
+            // Treat as chat message
+            const from = coords ? await getAddressFromCoords(coords.latitude, coords.longitude) : "unknown";
+            const fromCoords = coords ? `(${coords.latitude}, ${coords.longitude})` : "";
+
+            const contextMessage = {
+                role: "system",
+                content: `You are a helpful travel assistant. The user is currently at ${from} ${fromCoords}. Answer clearly and concisely.`,
+            };
+
+            const userMessage = { role: "user", content: input };
+            const updatedMessages = [contextMessage, userMessage];
+
+            setChat((prev) => [...prev, { sender: "You", text: input }]);
+            setMessages(updatedMessages);
+            setInput("");
+
+            const reply = await sendToGPT(updatedMessages);
+            setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+            setChat((prev) => [...prev, { sender: "Routely", text: reply }]);
+            setLoading(false);
+            return;
+        }
+
+        if (matchedAddress) {
+            setDestinationInput(matchedAddress);
+            try {
+                const coordsNew = await geocodeAddress(matchedAddress);
+                setDestinationCoords(coordsNew);
+                to = matchedAddress;
+                toCoords = coordsNew;
+            } catch (error) {
+                setChat((prev) => [...prev, { sender: "Routely", text: "Sorry, I couldn't find that location." }]);
+                setLoading(false);
+                return;
+            }
+        }
+
+        // Fetch ruta de transport (bus, uber, etc)
+        let ride = rideInfo;
+        if (coords && toCoords) {
+            ride = await fetchRideInfo(coords, toCoords);
+            setRideInfo(ride);
+        }
+
+        // Fetch ruta de transport în comun (transit)
+        // Fetch ruta de transport în comun (transit) și generează descrierea traseului
+        let transitSteps: TransitStep[] = [];
+        if (coords && toCoords) {
+            transitSteps = await fetchTransitRoute(false, coords, toCoords);
+        }
+        const transitDescription = getTransitSummary(transitSteps);
+
+        const fromCoords = coords ? `(${coords.latitude}, ${coords.longitude})` : "";
+        const from = coords ? await getAddressFromCoords(coords.latitude, coords.longitude) : "unknown";
+        const busTime = ride?.Bus?.time ?? "N/A";
+        const busPrice = ride?.Bus?.price ?? "N/A";
+        const uberTime = ride?.Uber?.time ?? "N/A";
+        const uberPrice = ride?.Uber?.price ?? "N/A";
+        const nextBadgePoints = getNextBadgePoints(userPoints ?? 0);
+
+        const contextMessage = {
+            role: "system",
+            content: `You are a helpful travel assistant. Users can get points by using the transit and helping the community by placing hazards.
+User is at ${from} ${fromCoords} and wants to go to ${to}.
+Transit route details: ${transitDescription}.
+Bus: ${busTime} min, ${busPrice}RON.
+Uber: ${uberTime} min, ${uberPrice}RON.
+The user currently has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - Number(userPoints)
+                } more points to reach the next badge (at ${Number(nextBadgePoints)} points).`,
+        };
+
+        const userMessage = { role: "user", content: input };
+        const updatedMessages = [contextMessage, userMessage];
+
+        setChat((prev) => [...prev, { sender: "You", text: input }]);
         setMessages(updatedMessages);
-        setInput('');
+        setInput("");
 
         const reply = await sendToGPT(updatedMessages);
-
-        setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-        setChat(prev => [...prev, { sender: 'Route Bot', text: reply }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+        setChat((prev) => [...prev, { sender: "Routely", text: reply }]);
         setLoading(false);
     };
 
-    const renderItem = ({ item }: { item: { sender: string; text: string } }) => (
-        <View style={item.sender === 'You' ? styles.userBubble : styles.aiBubble}>
-            <Text>{item.sender}: {item.text}</Text>
-        </View>
-    );
+
+
+    const styles = StyleSheet.create({
+        container: { flex: 1, padding: 16, paddingTop: 50, paddingBottom: 120 },
+        inputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingTop: 8,
+            borderTopWidth: 0,
+            borderColor: '#ccc',
+            paddingBottom: 20,
+        },
+        input: {
+            flex: 1,
+            padding: 15,
+            backgroundColor: '#f2f2f2',
+            borderRadius: 20,
+            marginRight: 10,
+        },
+        sendButton: {
+            backgroundColor: '#025ef8',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderRadius: 60,
+        },
+        sendButtonText: {
+            color: '#fff',
+            fontWeight: 'bold',
+        },
+        userBubble: {
+            alignSelf: 'flex-end',
+            backgroundColor: '#025ef8',
+            padding: 15,
+            marginVertical: 4,
+            borderRadius: 20,
+            maxWidth: '80%',
+            color: '#fff',
+        },
+        aiBubble: {
+            alignSelf: 'flex-start',
+            backgroundColor: '#F0F0F0',
+            padding: 15,
+            marginVertical: 4,
+            borderRadius: 20,
+            maxWidth: '80%',
+        },
+    });
 
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0} // adjust if you have a header
+            keyboardVerticalOffset={Platform.OS === "ios" ? -130 : 0} // adjust if you have a header
         >
+            {rideInfo && (
+                <View style={{ marginTop: 10 }}>
+                    <Text>Bus: {rideInfo.Bus.time} min - ${rideInfo.Bus.price}</Text>
+                    <Text>Uber: {rideInfo.Uber.time} min - ${rideInfo.Uber.price}</Text>
+                </View>
+            )}
+
             <View style={[styles.container, { backgroundColor: dark ? '#000' : '#fff' }]}>
                 <FlatList
                     ref={flatListRef}
                     data={chat}
                     keyExtractor={(_, index) => index.toString()}
-                    renderItem={renderItem}
+                    renderItem={({ item }) => (
+                        <View style={item.sender === 'You' ? styles.userBubble : styles.aiBubble}>
+                            <Text style={{ color: item.sender === 'You' ? '#fff' : '#000' }}>{item.text}</Text>
+                        </View>
+                    )}
                     contentContainerStyle={{ paddingBottom: 50 }}
                 />
                 <View style={styles.inputContainer}>
@@ -191,7 +555,8 @@ The user has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - 
                         style={styles.input}
                         value={input}
                         onChangeText={setInput}
-                        placeholder="Say something..."
+                        placeholder="Type a destination (e.g. 'to Central Park') or ask a question..."
+                        onSubmitEditing={handleSend}
                     />
                     <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={loading}>
                         <Text style={styles.sendButtonText}>{loading ? <ActivityIndicator color="#fff" /> : "Send"}</Text>
@@ -201,49 +566,3 @@ The user has ${Number(userPoints)} points and needs ${Number(nextBadgePoints) - 
         </KeyboardAvoidingView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16, paddingTop: 50, paddingBottom: 120 },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: 8,
-        borderTopWidth: 0,
-        borderColor: '#ccc',
-        paddingBottom: 20,
-    },
-    input: {
-        flex: 1,
-        padding: 15,
-        backgroundColor: '#f2f2f2',
-        borderRadius: 20,
-        marginRight: 10,
-    },
-    sendButton: {
-        backgroundColor: '#025ef8',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 60,
-    },
-    sendButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    userBubble: {
-        alignSelf: 'flex-end',
-        backgroundColor: '#025ef8',
-        padding: 15,
-        marginVertical: 4,
-        borderRadius: 20,
-        maxWidth: '80%',
-        color: '#fff',
-    },
-    aiBubble: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#F0F0F0',
-        padding: 15,
-        marginVertical: 4,
-        borderRadius: 20,
-        maxWidth: '80%',
-    },
-});
