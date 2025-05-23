@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image, Animated, Easing } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
@@ -41,6 +41,7 @@ Format:
     ]);
     const [loading, setLoading] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         if (flatListRef.current) {
@@ -103,6 +104,29 @@ Format:
         getTravelTime();
     }, [userLocation, destination, GOOGLE_MAPS_PLACES_LEGACY]);
 
+    useEffect(() => {
+        if (loading) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.2,
+                        duration: 500,
+                        useNativeDriver: true,
+                        easing: Easing.inOut(Easing.ease),
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                        easing: Easing.inOut(Easing.ease),
+                    }),
+                ])
+            ).start();
+        } else {
+            pulseAnim.setValue(1);
+        }
+    }, [loading]);
+
     const calculateBusPrice = () => {
         const numberOfBuses = routeStops.length;
         return numberOfBuses * 3;
@@ -126,6 +150,7 @@ Format:
         fromCoords: { latitude: number; longitude: number },
         toCoords: { latitude: number; longitude: number }
     ) => {
+        console.log("fetchTransitRoute called with:", fromCoords, toCoords);
         try {
             const origin = `${fromCoords.latitude},${fromCoords.longitude}`;
             const destination = `${toCoords.latitude},${toCoords.longitude}`;
@@ -329,6 +354,7 @@ Format:
 
 
     const handleSend = async () => {
+        console.log("handleSend called with input:", input);
         if (!input.trim()) return;
         setLoading(true);
 
@@ -492,9 +518,10 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
         input: {
             flex: 1,
             padding: 15,
-            backgroundColor: '#f2f2f2',
+            backgroundColor: 'black',
             borderRadius: 20,
             marginRight: 10,
+            color:'white'
         },
         sendButton: {
             backgroundColor: '#025ef8',
@@ -525,18 +552,38 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
         },
     });
 
-    return (
+     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={Platform.OS === "ios" ? -130 : 0} // adjust if you have a header
         >
-            {rideInfo && (
-                <View style={{ marginTop: 10 }}>
-                    <Text>Bus: {rideInfo.Bus.time} min - ${rideInfo.Bus.price}</Text>
-                    <Text>Uber: {rideInfo.Uber.time} min - ${rideInfo.Uber.price}</Text>
-                </View>
-            )}
+
+            {/* Bot Icon at the top center */}
+            <View style={{ alignItems: "center", backgroundColor: dark ? 'black' : 'white', shadowColor: "#025ef8", shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, }}>
+                <Animated.View
+                    style={{
+                        width: 60,
+                        height: 40,
+                        borderRadius: 30,
+                        backgroundColor: "#025ef8",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        transform: [{ scale: pulseAnim }],
+                        shadowColor: "#025ef8",
+                        shadowOpacity: 0.9,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 4 },
+                        marginTop: 40,
+                        marginBottom: 20,
+                    }}
+                >
+                    <Image
+                        source={require('assets/images/bot.png')}
+                        style={{ width: 40, height: 42, resizeMode: 'contain' }}
+                    />
+                </Animated.View>
+            </View>
 
             <View style={[styles.container, { backgroundColor: dark ? '#000' : '#fff' }]}>
                 <FlatList
@@ -555,7 +602,8 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
                         style={styles.input}
                         value={input}
                         onChangeText={setInput}
-                        placeholder="Type a destination (e.g. 'to Central Park') or ask a question..."
+                        placeholder="Type a destination (e.g. 'City Park Mall') or ask a question..."
+                        placeholderTextColor="white"
                         onSubmitEditing={handleSend}
                     />
                     <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={loading}>
@@ -566,3 +614,4 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
         </KeyboardAvoidingView>
     );
 }
+
