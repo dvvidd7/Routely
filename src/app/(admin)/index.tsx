@@ -438,7 +438,7 @@ export default function TabOneScreen() {
 
   {/* POINTS SYSTEM */ }
 
-  const { mutate: updatePoints } = useUpdatePoints();
+  const { mutate: updatePoints } = useUpdatePoints({points: 0});
   const { data: points, error } = useGetPoints();
 
   const queryClient = useQueryClient();
