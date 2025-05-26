@@ -69,7 +69,7 @@ const MicButton = ({onAverage} : MicButtonProps) => {
         const avg = sum / meteringValues.current.length;
         setAverage(avg);
         if(onAverage) onAverage(avg);
-        console.warn(average);
+        // console.warn(average);
       } else console.warn("Metering values <= 0")
     }
     setShowMic(false);
