@@ -127,6 +127,7 @@ export default function TabOneScreen() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { mutate: useNewSearch } = useCreateSearch();
   const [micAverage, setMicAverage] = useState<number | null>(null);
+  const { loading, isAdmin, session } = useAuth();
   const origin = userLocation
     ? `${userLocation.latitude},${userLocation.longitude}`
     : null; // Fallback to null if userLocation is not available
@@ -186,6 +187,11 @@ export default function TabOneScreen() {
     setSearchVisible(true);
     setShowCloud(true);
     setShowMic(true);
+  };
+  const POLLUTION_HAZARD = {
+    id: 6,
+    label: "High Pollution",
+    icon: "🌫️",
   };
   const getUserLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
@@ -350,8 +356,12 @@ export default function TabOneScreen() {
     startTracking();
   }, [previousLocation]);
   useEffect(() => {
+
     const fetchUserEmail = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
+      console.warn("Is admin: " + isAdmin);
+      console.warn("Session: " + session);
+      console.warn("Loading: " + loading);
       if (error) {
         console.error("Error fetching user session:", error);
         return;
@@ -379,6 +389,8 @@ export default function TabOneScreen() {
     }
   }, [notification]);
 
+
+
   useEffect(() => {
     (async () => {
       try {
@@ -396,6 +408,43 @@ export default function TabOneScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!userLocation || !aqiStations.length) return;
+
+    // Set your AQI threshold
+    const AQI_THRESHOLD = 50;
+
+    // Find stations with high AQI near the user (within 500m, adjust as needed)
+    const highAqiStations = aqiStations.filter(station =>
+      Number(station.aqi) > AQI_THRESHOLD &&
+      getDistanceFromLatLonInMeters(
+        userLocation.latitude,
+        userLocation.longitude,
+        station.lat,
+        station.lon
+      ) < 10000
+    );
+
+    if (highAqiStations.length > 0) {
+      // Add a pollution hazard marker for each high AQI station (if not already present)
+      setHazardMarkers(prev => {
+        // Avoid duplicates
+        const pollutionHazards = highAqiStations.map(station => ({
+          id: Number(station.uid) || Date.now() + Math.floor(Math.random() * 1000000),
+          latitude: station.lat,
+          longitude: station.lon,
+          label: "High Pollution",
+          icon: "🌫️",
+          created_at: new Date().toISOString(),
+          image: require('../../../assets/images/highPollution.png')
+        }));
+        // Filter out existing pollution hazards
+        const nonPollution = prev.filter(h => h.label !== "High Pollution");
+        return [...nonPollution, ...pollutionHazards];
+      });
+    }
+  }, [aqiStations, userLocation]);
 
   useEffect(() => {
     if (stationVisible && routeStops.length > 0) {
@@ -683,31 +732,31 @@ export default function TabOneScreen() {
 
         const { isSafe, hazardCount, highAqiCount } = isRouteSafe(routeStations, hazardMarkers, aqiStations);
 
-        if (!isSafe && !isReroute) {
-          Alert.alert(
-            "Unsafe Route",
-            `There are ${hazardCount} hazards and ${highAqiCount} high AQI areas along your route. Would you like to be rerouted?`,
-            [
-              {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => {
-                  setRouteStops([]);
-                },
-              },
-              {
-                text: "Reroute",
-                style: "destructive",
-                onPress: () => {
-                  // Optionally: modify destination slightly to trigger alternate route
-                  fetchTransitRoute(true); // Retry with reroute flag
-                },
-              },
-            ],
-            { cancelable: false }
-          );
-          return;
-        }
+        // if (!isSafe && !isReroute) {
+        //   Alert.alert(
+        //     "Unsafe Route",
+        //     `There are ${hazardCount} hazards and ${highAqiCount} high AQI areas along your route. Would you like to be rerouted?`,
+        //     [
+        //       {
+        //         text: "Cancel",
+        //         style: "cancel",
+        //         onPress: () => {
+        //           setRouteStops([]);
+        //         },
+        //       },
+        //       {
+        //         text: "Reroute",
+        //         style: "destructive",
+        //         onPress: () => {
+        //           // Optionally: modify destination slightly to trigger alternate route
+        //           fetchTransitRoute(true); // Retry with reroute flag
+        //         },
+        //       },
+        //     ],
+        //     { cancelable: false }
+        //   );
+        //   return;
+        // }
 
         openTransportModal();
         setRouteVisible(true);
@@ -730,6 +779,95 @@ export default function TabOneScreen() {
 
     return hours * 60 + minutes;
   };
+  async function getSafeRoute(
+    origin: { lat: number; lng: number },
+    destination: { lat: number; lng: number },
+    hazards: { lat: number; lng: number }[]
+  ) {
+    // Step 1: Generate detour waypoints to avoid hazards
+    const detourWaypoints = generateDetourWaypoints(hazards);
+
+    // Step 2: Construct the Directions API request with waypoints
+    const waypointsParam = detourWaypoints.map(point => `${point.lat},${point.lng}`).join('|');
+    const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&waypoints=${waypointsParam}&key=${GOOGLE_MAPS_PLACES_LEGACY}`;
+
+    // Step 3: Fetch the route
+    const response = await fetch(directionsUrl);
+    const data = await response.json();
+
+    // Step 4: Evaluate and select the optimal route
+    if (data.routes && data.routes.length > 0) {
+      const optimalRoute = selectOptimalRoute(data.routes, hazards);
+      return optimalRoute;
+    } else {
+      throw new Error('No routes found');
+    }
+  }
+
+  function generateDetourWaypoints(
+    hazards: { lat: number; lng: number }[],
+    offsetDistance = 0.005
+  ) {
+    return hazards.map((hazard: { lat: number; lng: number }) => {
+      const angle = Math.random() * 2 * Math.PI;
+      const offsetLat = hazard.lat + offsetDistance * Math.cos(angle);
+      const offsetLng = hazard.lng + offsetDistance * Math.sin(angle);
+      return { lat: offsetLat, lng: offsetLng };
+    });
+  }
+
+
+  function selectOptimalRoute(
+    routes: Array<{ overview_polyline?: { points: string } }>,
+    hazards: Array<{ lat: number; lng: number }>
+  ) {
+    let bestRoute = null;
+    let fewestHazards = Number.MAX_SAFE_INTEGER;
+
+    for (const route of routes) {
+      const polylinePoints = route.overview_polyline?.points;
+      if (!polylinePoints) continue;
+      const decoded = decodePolyline(polylinePoints);
+      const hazardCount = hazardsNearPolyline(decoded, hazards, 100).length;
+
+      if (hazardCount < fewestHazards) {
+        fewestHazards = hazardCount;
+        bestRoute = decoded;
+      }
+    }
+
+    return bestRoute;
+  }
+
+  const rerouteSafely = async (
+    userLocation: { latitude: number; longitude: number },
+    destination: { lat: number; lng: number },
+    hazardMarkers: Array<{ lat: number; lng: number }>
+  ) => {
+    const detourWaypoints = generateDetourWaypoints(hazardMarkers);
+    const waypointsParam = detourWaypoints.map(wp => `${wp.lat},${wp.lng}`).join('|');
+
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/directions/json?origin=${userLocation.latitude},${userLocation.longitude}&destination=${destination.lat},${destination.lng}&waypoints=${waypointsParam}&alternatives=true&mode=driving&key=${GOOGLE_MAPS_PLACES_LEGACY}`
+    );
+
+    const data = await response.json();
+
+    if (data.routes && data.routes.length > 0) {
+      const bestRoute = selectOptimalRoute(data.routes, hazardMarkers);
+      if (bestRoute) {
+        setDrivingRoute(bestRoute);
+        setRouteVisible(true);
+        return bestRoute;
+      } else {
+        Alert.alert("Warning", "No safe route found. Try again.");
+        return null;
+      }
+    }
+    return null;
+  };
+
+
   useEffect(() => {
     if (routeStops.length == 1) {
       const arrivalMinutes = timeToMinutes(routeStops[0].arrivalTime);
@@ -992,10 +1130,10 @@ export default function TabOneScreen() {
       }
 
       if (!rerouted) {
-        Alert.alert(
-          "Unsafe Route",
-          `All attempted routes have ${hazardCount} hazards and ${highAqiCount} high AQI areas. Please try again later.`
-        );
+        // Alert.alert(
+        //   "Unsafe Route",
+        //   `All attempted routes have ${hazardCount} hazards and ${highAqiCount} high AQI areas. Please try again later.`
+        // );
         return;
       }
       Alert.alert("Route Rerouted", "We found a safer route for you!");
@@ -1097,13 +1235,23 @@ export default function TabOneScreen() {
 
       // Check for hazards along the route
       const hazardsAlongRoute = hazardsNearPolyline(decodedPath, hazardMarkers, 100); // 100 meters threshold
-      if (hazardsAlongRoute.length > 0) {
+      if (hazardsAlongRoute.length > 1) {
         Alert.alert(
           "Warning",
-          `There are ${hazardsAlongRoute.length} hazards reported along your route!`
+          `There are ${hazardsAlongRoute.length} hazards reported along your route!`,
+          [
+            {
+              text: "OK",
+              style: "default",
+              onPress: () => {
+
+              }
+            },
+          ],
+          { cancelable: true }
         );
-        // Optionally: Try to reroute here by changing the destination slightly and refetching
-        // return; // Uncomment if you want to block the route
+        // Optionally: return here if you want to block the original route
+        // return;
       }
 
       setDrivingRoute(decodedPath); // Draw route on the map
@@ -1250,8 +1398,8 @@ export default function TabOneScreen() {
               if (displayMarker) {
                 setFakeMarkerShadow(true);
                 setPinOrigin(region);
-                setTimeout(() => {  
-                  
+                setTimeout(() => {
+
                   getLocationName(region.latitude, region.longitude).then(setPinpointDetails);
                 }, 500);
               }
@@ -1420,6 +1568,13 @@ export default function TabOneScreen() {
                     resizeMode='center'
                   />
                 )}
+                {hazard.label === 'High Pollution' && (
+                  <Image
+                    source={require('../../../assets/images/highPollution.png')}
+                    style={{ width: 70, height: 70 }}
+                    resizeMode='center'
+                  />
+                )}
                 {hazard.icon === '👮' && (
                   <Image
                     source={require(`../../../assets/images/inspector.png`)}
@@ -1430,7 +1585,7 @@ export default function TabOneScreen() {
                 {hazard.icon === '🎤' && (
                   <Image
                     source={require(`../../../assets/images/loudnoise.png`)}
-                    style={{ width: 80, height: 80 }}
+                    style={{ width: 70, height: 70 }}
                     resizeMode='center'
                   />
                 )}
@@ -1522,24 +1677,24 @@ export default function TabOneScreen() {
                 predefinedPlaces={[]}
                 minLength={1}
                 fields='*'
-                renderRightButton={() => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDisplayMarker(true);
-                      setIsFocused(false);
-                      setPinpointModalVisible(true);
-                      setSearchVisible(false);
-                    }}
-                    style={{
-                      height: 60,
-                      justifyContent: 'center',
-                      alignItems: 'flex-end',
-                      left: '4%',
-                    }}
-                  >
-                    <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
-                  </TouchableOpacity>
-                )}
+                // renderRightButton={() => (
+                //   <TouchableOpacity
+                //     onPress={() => {
+                //       setDisplayMarker(true);
+                //       setIsFocused(false);
+                //       setPinpointModalVisible(true);
+                //       setSearchVisible(false);
+                //     }}
+                //     style={{
+                //       height: 60,
+                //       justifyContent: 'center',
+                //       alignItems: 'flex-end',
+                //       left: '4%',
+                //     }}
+                //   >
+                //     <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
+                //   </TouchableOpacity>
+                // )}
                 onPress={(data, details = null) => {
                   // console.warn(details?.geometry.location);
                   if (!details || !details.geometry) return;
@@ -1630,25 +1785,25 @@ export default function TabOneScreen() {
                   ItemSeparatorComponent={() => <Divider />}
                 />
               )}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDisplayMarker(true);
-                      setIsFocused(false);
-                      setPinpointModalVisible(true);
-                      setSearchVisible(false);
-                    }}
-                    style={{
-                      height: 60,
-                      justifyContent: 'center',
-                      alignItems: 'flex-end',
-                      right: 50,
-                      top: 90,
-                      position: 'absolute',
-                      zIndex: 500
-                    }}
-                  >
-                      <Image style={{width: 40, height: 40}} source={require('../../../assets/images/pinicon.png')} />
-                  </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setDisplayMarker(true);
+                  setIsFocused(false);
+                  setPinpointModalVisible(true);
+                  setSearchVisible(false);
+                }}
+                style={{
+                  height: 60,
+                  justifyContent: 'center',
+                  alignItems: 'flex-end',
+                  right: 50,
+                  top: 90,
+                  position: 'absolute',
+                  zIndex: 500
+                }}
+              >
+                <Image style={{ width: 40, height: 40 }} source={require('../../../assets/images/pinicon.png')} />
+              </TouchableOpacity>
             </View>
           </Modal>
 
@@ -1792,7 +1947,7 @@ export default function TabOneScreen() {
               </TouchableOpacity>
 
               {/* Cancel Button */}
-              <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransportSelection}>
+              <TouchableOpacity style={styles.cancelButton2} onPress={handleCancelTransportSelection}>
                 <Text style={styles.cancelText}>❌ Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -1877,6 +2032,15 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     bottom: 5
   },
+  cancelButton2: {
+    backgroundColor: "#ff4d4d",
+    padding: 15,
+    width: "100%",
+    borderRadius: 10,
+    alignItems: "center",
+    marginVertical: 10,
+    bottom: -2
+  },
   cancelButtonHazard: {
     backgroundColor: "#ff4d4d",
     padding: 15,
@@ -1884,7 +2048,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginVertical: 10,
-    bottom: 70
+    bottom: 75
   },
   optionText: {
     fontSize: 16,

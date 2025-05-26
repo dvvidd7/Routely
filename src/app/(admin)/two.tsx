@@ -107,6 +107,7 @@ export default function TabTwoScreen() {
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
+      console.warn(getUser, user?.email);
       if (error) { console.error('Error fetching user: ', error.message); return; }
 
       if (user) {
@@ -192,7 +193,7 @@ export default function TabTwoScreen() {
             setNewUsername('');
             queryClient.clear();
             await supabase.auth.signOut();
-            router.push('/sign-in');
+            router.push('sign-in');
           }
         },
       ]
@@ -231,15 +232,18 @@ export default function TabTwoScreen() {
       style={{ flex: 1, backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }}
     >
       <View style={{flexDirection: 'row', justifyContent: 'space-between', alignContent: 'center', alignItems: 'center'}}>
-      <Text style={[styles.text, { color: isDarkMode ? 'red' : 'red' }]}>
-        Admin
-      </Text>
+        <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
+          Account
+        </Text>
+
         <View style={styles.adminPage}>
-          <TouchableOpacity onPress={() => router.push('(user)')}>
+          <TouchableOpacity onPress={() => router.push('(admin)')}>
             <Text style={styles.adminText}>Go to user page</Text>
           </TouchableOpacity>
         </View>
+
       </View>
+
 
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -314,7 +318,13 @@ export default function TabTwoScreen() {
       </View>
 
       <View style={[styles.middleContainer, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
-
+        {/* {isAdmin && (
+          <View style={styles.adminPage}>
+            <TouchableOpacity onPress={() => router.push('(admin)')}>
+              <Text style={styles.adminText}>Go to admin page</Text>
+            </TouchableOpacity>
+          </View>
+        )} */}
 
         {/* Username and Email Section */}
         <View style={[styles.usernameContainer, isEditing && styles.usernameContainerEditing, { backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }]}>
@@ -425,11 +435,11 @@ const styles = StyleSheet.create({
   },
   adminPage: {
     backgroundColor: '#025ef8',
-    top: 10,
+    top: 20,
     right: 10,
-    width: '30%',
+    width: '34%',
     height: 40,
-    borderRadius: 5,
+    borderRadius: 45,
     // padding: 8,
     // bottom: 317,
     // left: 120,
@@ -437,8 +447,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   adminText: {
-    fontWeight: '500',
-    fontSize: 15,
+    fontWeight: '600',
+    fontSize: 12,
     color: 'black'
   },
   text: {

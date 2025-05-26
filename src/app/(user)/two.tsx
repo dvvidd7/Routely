@@ -199,6 +199,38 @@ export default function TabTwoScreen() {
     );
   };
 
+  const userId = session?.user.id;
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Are you sure?',
+      'Do you really want to delete your account?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            setUsername('');
+            setEmail('');
+            setTransport('');
+            setNewUsername('');
+            queryClient.clear();
+            if (userId) {
+              await supabase
+                .from('profiles')
+                .update({ deleted: true })
+                .eq('id', userId);
+              await supabase.auth.signOut();
+            } else {
+              Alert.alert('Error', 'User ID is not available.');
+            }
+            router.push('sign-in');
+          }
+        },
+      ]
+    );
+  };
+
   const handlePencilPress = () => {
     setIsEditing(!isEditing);
   };
@@ -230,7 +262,7 @@ export default function TabTwoScreen() {
       contentContainerStyle={{ paddingBottom: 100 }}
       style={{ flex: 1, backgroundColor: isDarkMode ? '#0f0f0f' : 'white' }}
     >
-      <View style={{flexDirection: 'row', justifyContent: 'space-between', alignContent: 'center', alignItems: 'center'}}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignContent: 'center', alignItems: 'center' }}>
         <Text style={[styles.text, { color: isDarkMode ? 'white' : 'black' }]}>
           Account
         </Text>
@@ -246,9 +278,9 @@ export default function TabTwoScreen() {
 
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable style={{ ...styles.viewLeader, backgroundColor: '#025ef8',}} onPress={() => setModalVisible(true)}>
+        <Pressable style={{ ...styles.viewLeader, backgroundColor: '#025ef8', }} onPress={() => setModalVisible(true)}>
           <Entypo name={'trophy'} size={30} color={'#f5d90a'} />
-          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: 'white'}}>View Leaderboard</Text>
+          <Text style={{ fontSize: 20, marginLeft: 5, fontWeight: '500', color: 'white' }}>View Leaderboard</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Text style={{ fontSize: 30, fontWeight: '500', marginHorizontal: 5, color: dark ? 'white' : 'black' }}>{points}</Text>
@@ -411,8 +443,14 @@ export default function TabTwoScreen() {
             <View>
               <Pressable onPress={handleLogout} style={styles.logoutButton}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialCommunityIcons name="logout" size={20} color="red" style={{ marginRight: 5, bottom:45 }} />
+                  <MaterialCommunityIcons name="logout" size={20} color="red" style={{ marginRight: 5, bottom: 45 }} />
                   <Text style={styles.logoutText}>Log Out</Text>
+                </View>
+              </Pressable>
+              <Pressable onPress={handleDeleteAccount} style={styles.deleteButton}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <AntDesign name="deleteuser" size={20} color="red" style={{ marginRight: 0, bottom: 45 }} />
+                  <Text style={styles.logoutText}>Delete account</Text>
                 </View>
               </Pressable>
             </View>
@@ -436,9 +474,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#025ef8',
     top: 20,
     right: 10,
-    width: '30%',
+    width: '34%',
     height: 40,
-    borderRadius: 5,
+    borderRadius: 45,
     // padding: 8,
     // bottom: 317,
     // left: 120,
@@ -446,8 +484,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   adminText: {
-    fontWeight: '500',
-    fontSize: 15,
+    fontWeight: '600',
+    fontSize: 12,
     color: 'black'
   },
   text: {
@@ -468,15 +506,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     left: 20,
     backgroundColor: 'gainsboro',
-    borderRadius: 25, 
-    padding: 11, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    elevation: 5, 
-    shadowColor: '#000', 
+    borderRadius: 25,
+    padding: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5, 
-    shadowRadius: 4, 
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    width: "59%"
   },
   modal: {
     flex: 1,
@@ -607,6 +646,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     padding: 1,
     width: 100,
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  deleteButton: {
+    backgroundColor: 'transparent',
+    padding: 1,
+    width: 70,
     alignItems: 'center',
     alignSelf: 'center',
   },
