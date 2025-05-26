@@ -361,13 +361,18 @@ Format:
         let coords = userLocation;
         if (!coords) coords = await getUserLocation();
 
-        // Detectăm dacă e o întrebare / mesaj general de chat, nu o destinație
+        //question detection
         const isGeneralChat =
             input.toLowerCase().startsWith("how") ||
             input.toLowerCase().startsWith("what") ||
             input.toLowerCase().startsWith("where") ||
             input.toLowerCase().startsWith("can") ||
             input.toLowerCase().startsWith("do") ||
+            input.toLowerCase().startsWith("cum") ||
+            input.toLowerCase().startsWith("ce") ||
+            input.toLowerCase().startsWith("unde") ||
+            input.toLowerCase().startsWith("pot") ||
+            input.toLowerCase().startsWith("sa fac") ||
             input.includes("?");
 
         if (isGeneralChat) {
@@ -394,16 +399,21 @@ Format:
             return;
         }
 
-        // Dacă nu e mesaj conversațional, tratăm input-ul ca destinație
+        // Daca nu e mesaj conversațional, tratam input-ul ca destinație
         let to = destination?.description || "unknown";
         let toCoords = destinationCoords;
 
-        // 🔍 Detectăm dacă input-ul conține un pattern de destinație
+        //pattern detection
         const destinationPatterns = [
             /^to\s+(.+)/i,
             /^i want to go to\s+(.+)/i,
             /^take me to\s+(.+)/i,
             /^navigate to\s+(.+)/i,
+            /^la\s+(.+)/i,
+            /^vreau sa merg la\s+(.+)/i,
+            /^du-ma la\s+(.+)/i,
+            /^du ma la\s+(.+)/i,
+            /^cum ajung la\s+(.+)/i,
         ];
 
         let matchedAddress: string | null = null;
@@ -602,7 +612,7 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
                         style={styles.input}
                         value={input}
                         onChangeText={setInput}
-                        placeholder="Type a destination (e.g. 'City Park Mall') or ask a question..."
+                        placeholder="Type a destination (e.g. 'i want to go to') or ask a question..."
                         placeholderTextColor="white"
                         onSubmitEditing={handleSend}
                     />
