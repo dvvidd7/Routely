@@ -957,6 +957,20 @@ export default function TabOneScreen() {
                     resizeMode='center'
                   />
                 )}
+                {hazard.label === 'Noise Pollution' && (
+                  <Image
+                    source={require(`../../../assets/images/loudnoise.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.label === 'High Pollution' && (
+                  <Image
+                    source={require(`../../../assets/images/highPollution.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
               </Marker>
             ))}
           </MapView>

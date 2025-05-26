@@ -103,6 +103,9 @@ export default function Panel({ navigation }: any) {
             {item.label === "Roadblock" && (
                 <Image style={styles.iconCell} source={require('../../../assets/images/roadblocklogo.png')} />
             )}
+            {item.label === "Noise Pollution" && (
+                <Image style={styles.iconCell} source={require('../../../assets/images/speaker.png')} />
+            )}
             <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{item.label}</Text>
             <Text style={[styles.cell, { color: dark ? colors.text : "black" }]}>{new Date(item.created_at).toLocaleString()}</Text>
             <Text style={[styles.emailCell, { color: dark ? colors.text : "black" }]}>{item.email}</Text>
