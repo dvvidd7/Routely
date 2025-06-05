@@ -438,7 +438,7 @@ export default function TabOneScreen() {
 
   {/* POINTS SYSTEM */ }
 
-  const { mutate: updatePoints } = useUpdatePoints({ points: 0 });
+  const { mutate: updatePoints } = useUpdatePoints({points: 0});
   const { data: points, error } = useGetPoints();
 
   const queryClient = useQueryClient();
@@ -953,6 +953,20 @@ export default function TabOneScreen() {
                 {hazard.icon === '👮' && (
                   <Image
                     source={require(`../../../assets/images/inspector.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.label === 'Noise Pollution' && (
+                  <Image
+                    source={require(`../../../assets/images/loudnoise.png`)}
+                    style={{ width: 80, height: 80 }}
+                    resizeMode='center'
+                  />
+                )}
+                {hazard.label === 'High Pollution' && (
+                  <Image
+                    source={require(`../../../assets/images/highPollution.png`)}
                     style={{ width: 80, height: 80 }}
                     resizeMode='center'
                   />

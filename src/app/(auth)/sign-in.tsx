@@ -92,9 +92,9 @@ export default function SignIn() {
       </View>
 
       <View>
-        <Pressable style={{marginLeft:220}} onPress={forgotPass}>
+        {/* <Pressable style={{marginLeft:220}} onPress={forgotPass}>
             <Text style={styles.forgotPassword} >I forgot my password</Text>
-        </Pressable>
+        </Pressable> */}
       </View>
 
       <View style={styles.signInButtonContainer}>

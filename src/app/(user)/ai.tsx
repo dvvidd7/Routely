@@ -528,10 +528,8 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
         input: {
             flex: 1,
             padding: 15,
-            backgroundColor: 'black',
             borderRadius: 20,
             marginRight: 10,
-            color:'white'
         },
         sendButton: {
             backgroundColor: '#025ef8',
@@ -609,11 +607,11 @@ The user currently has ${Number(userPoints)} points and needs ${Number(nextBadge
                 />
                 <View style={styles.inputContainer}>
                     <TextInput
-                        style={styles.input}
+                        style={{...styles.input, backgroundColor: dark ? '#262626' : '#D3D3D3', color: dark ? 'white' : 'black'}}
                         value={input}
                         onChangeText={setInput}
                         placeholder="Type a destination (e.g. 'i want to go to') or ask a question..."
-                        placeholderTextColor="white"
+                        placeholderTextColor={dark ? 'white' : 'gray'}
                         onSubmitEditing={handleSend}
                     />
                     <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={loading}>
