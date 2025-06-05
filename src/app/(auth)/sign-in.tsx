@@ -25,31 +25,8 @@ export default function SignIn() {
     const passInputRef = useRef<TextInput>(null);
 
     const forgotPass = async () => {
-      if (!email) {
-        Alert.alert("Error", "Please enter your email address.");
-        return;
-      }
-    
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-    
-        if (error) {
-          Alert.alert("Error", error.message);
-        } else {
-          Alert.alert(
-            "Success",
-            "A password reset link has been sent to your email address."
-          );
-        }
-      } catch (err) {
-        console.error("Error sending password reset email:", err);
-        Alert.alert("Error", "An unexpected error occurred. Please try again.");
-      }
-    };
-    // const onSignIn = () => {
-    //     console.log(`Sign in detected: ${email} ${password} `);
-    //     resetFields();
-    // }
+      router.replace("forgotPass");
+    }
     const resetFields = () => {
         setEmail('');
         setPassword('');

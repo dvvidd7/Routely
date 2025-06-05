@@ -26,6 +26,7 @@ import Colors from '@/constants/Colors';
 import { useAuth } from '@/providers/AuthProvider';
 import { UrlTile } from 'react-native-maps';
 import MicButton from '@/components/MicButton';
+import { router } from 'expo-router';
 
 const INITIAL_REGION = {
   latitude: 44.1765368,
@@ -296,6 +297,32 @@ export default function TabOneScreen() {
       }
     });
   };
+
+  const checkIfUserToBeDeleted = async () => {
+    // Make sure you have the user id/session
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('to_be_deleted')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return;
+    }
+
+    if (data?.to_be_deleted === true) {
+      await supabase.auth.signOut();
+      router.replace('(auth)/sign-in');
+    }
+  };
+
+  checkIfUserToBeDeleted();
+
   useEffect(() => {
     if (!micAverage) return;
     if (micAverage > -20) {

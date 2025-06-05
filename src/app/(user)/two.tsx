@@ -203,8 +203,8 @@ export default function TabTwoScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Are you sure?',
       'Do you really want to delete your account?',
+      'Remember, this action is irreversible. Note: Your account will be permanently deleted after a 30-day grace period',
       [
         { text: 'No', style: 'cancel' },
         {
@@ -218,7 +218,7 @@ export default function TabTwoScreen() {
             if (userId) {
               await supabase
                 .from('profiles')
-                .update({ deleted: true })
+                .update({ to_be_deleted: true }) // <-- update this column
                 .eq('id', userId);
               await supabase.auth.signOut();
             } else {
